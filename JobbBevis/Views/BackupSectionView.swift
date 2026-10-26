@@ -1,7 +1,6 @@
 import CoreTransferable
 import SwiftData
 import SwiftUI
-import UIKit
 import UniformTypeIdentifiers
 
 struct BackupTransferItem: Transferable {
@@ -21,6 +20,7 @@ struct BackupSectionView: View {
     @State private var exportItem: BackupTransferItem?
     @State private var isExporting = false
     @State private var isImporting = false
+    @State private var isReadingBackup = false
     @State private var restoreCandidate: RestoreCandidate?
     @State private var message: BackupMessage?
 
@@ -28,6 +28,13 @@ struct BackupSectionView: View {
         Section("Backup") {
             Button("Export backup", systemImage: "square.and.arrow.up", action: prepareExport)
             Button("Restore backup", systemImage: "arrow.down.doc", action: { isImporting = true })
+
+            if isReadingBackup {
+                HStack {
+                    ProgressView()
+                    Text("Reading backup…")
+                }
+            }
 
             Text("A backup contains customer information and images. Store it safely. The file is not encrypted.")
                 .font(.footnote)
@@ -52,10 +59,12 @@ struct BackupSectionView: View {
                 )
             }
         }
-        .sheet(isPresented: $isImporting) {
-            BackupDocumentPicker(isPresented: $isImporting) { url in
-                handleImportResult(.success(url))
-            }
+        .fileImporter(
+            isPresented: $isImporting,
+            allowedContentTypes: [.json, .data],
+            allowsMultipleSelection: false
+        ) { result in
+            handleImportResult(result.map { $0.first })
         }
         .sheet(item: $restoreCandidate) { candidate in
             RestoreConfirmationView(
@@ -104,23 +113,29 @@ struct BackupSectionView: View {
         }
     }
 
-    private func handleImportResult(_ result: Result<URL, Error>) {
+    private func handleImportResult(_ result: Result<URL?, Error>) {
         switch result {
-        case .success(let url):
-            Task { await prepareImportedBackup(from: url) }
+        case .success(let url?):
+            let didAccess = url.startAccessingSecurityScopedResource()
+            Task {
+                await prepareImportedBackup(from: url, didAccess: didAccess)
+            }
+        case .success(nil):
+            showImportError(BackupError.invalidFormat)
         case .failure(let error):
             showImportError(error)
         }
     }
 
-    private func prepareImportedBackup(from url: URL) async {
-        do {
-            let didAccess = url.startAccessingSecurityScopedResource()
-            defer {
-                if didAccess {
-                    url.stopAccessingSecurityScopedResource()
-                }
+    private func prepareImportedBackup(from url: URL, didAccess: Bool) async {
+        isReadingBackup = true
+        defer {
+            isReadingBackup = false
+            if didAccess {
+                url.stopAccessingSecurityScopedResource()
             }
+        }
+        do {
             let values = try? url.resourceValues(forKeys: [.isUbiquitousItemKey])
             if values?.isUbiquitousItem == true {
                 try FileManager.default.startDownloadingUbiquitousItem(at: url)
@@ -149,7 +164,7 @@ struct BackupSectionView: View {
             try BackupService().restore(restoreCandidate.prepared, into: modelContext)
             self.restoreCandidate = nil
             Task {
-                try await Task.sleep(for: .milliseconds(400))
+                try? await Task.sleep(for: .milliseconds(400))
                 message = BackupMessage(
                     title: String(localized: LocalizedStringResource("Backup restored", locale: locale)),
                     text: String(localized: LocalizedStringResource("The existing data was replaced with the backup.", locale: locale))
@@ -158,7 +173,7 @@ struct BackupSectionView: View {
         } catch {
             self.restoreCandidate = nil
             Task {
-                try await Task.sleep(for: .milliseconds(400))
+                try? await Task.sleep(for: .milliseconds(400))
                 message = BackupMessage(
                     title: String(localized: LocalizedStringResource("Could not restore backup", locale: locale)),
                     text: localizedError(error)
@@ -214,47 +229,6 @@ private struct BackupMessage: Identifiable {
     let id = UUID()
     let title: String
     let text: String
-}
-
-private struct BackupDocumentPicker: UIViewControllerRepresentable {
-    @Binding var isPresented: Bool
-    let didPick: (URL) -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(isPresented: $isPresented, didPick: didPick)
-    }
-
-    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.json], asCopy: true)
-        picker.allowsMultipleSelection = false
-        picker.shouldShowFileExtensions = true
-        picker.delegate = context.coordinator
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {
-    }
-
-    final class Coordinator: NSObject, UIDocumentPickerDelegate {
-        @Binding private var isPresented: Bool
-        private let didPick: (URL) -> Void
-
-        init(isPresented: Binding<Bool>, didPick: @escaping (URL) -> Void) {
-            _isPresented = isPresented
-            self.didPick = didPick
-        }
-
-        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-            isPresented = false
-            if let url = urls.first {
-                didPick(url)
-            }
-        }
-
-        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
-            isPresented = false
-        }
-    }
 }
 
 private struct RestoreConfirmationView: View {
@@ -314,7 +288,7 @@ private struct RestoreConfirmationView: View {
     private func beginRestore() {
         isRestoring = true
         Task {
-            try await Task.sleep(for: .milliseconds(100))
+            try? await Task.sleep(for: .milliseconds(100))
             restore()
         }
     }
