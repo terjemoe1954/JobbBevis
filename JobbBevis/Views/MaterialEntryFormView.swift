@@ -5,6 +5,8 @@ struct MaterialEntryFormView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
+    @Query(sort: [SortDescriptor(\ProductCatalogItem.supplier), SortDescriptor(\ProductCatalogItem.name)])
+    private var products: [ProductCatalogItem]
     let job: JobRecord
     let entry: MaterialEntry?
 
@@ -13,6 +15,7 @@ struct MaterialEntryFormView: View {
     @State private var selectedUnit: String
     @State private var customUnit: String
     @State private var note: String
+    @State private var unitPriceText: String
     @State private var showNameError = false
     @State private var showQuantityError = false
     @State private var showUnitError = false
@@ -28,12 +31,22 @@ struct MaterialEntryFormView: View {
         _selectedUnit = State(initialValue: isPreset ? existingUnit : "custom")
         _customUnit = State(initialValue: isPreset ? "" : existingUnit)
         _note = State(initialValue: entry?.note ?? "")
+        _unitPriceText = State(initialValue: entry?.unitPrice.map(String.init(describing:)) ?? "")
     }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("Material") {
+                    if entry == nil, !products.isEmpty {
+                        Menu("Copy from product catalog", systemImage: "shippingbox.fill") {
+                            ForEach(products) { product in
+                                Button("\(product.supplier) – \(product.name)") {
+                                    apply(product)
+                                }
+                            }
+                        }
+                    }
                     TextField("Name", text: $name)
                     if showNameError {
                         Text("Enter a material name.")
@@ -67,6 +80,9 @@ struct MaterialEntryFormView: View {
 
                     TextField("Note", text: $note, axis: .vertical)
                         .lineLimit(2...5)
+
+                    TextField("Unit price, excluding VAT", text: $unitPriceText)
+                        .keyboardType(.decimalPad)
                 }
             }
             .navigationTitle(entry == nil ? "New material" : "Edit material")
@@ -81,6 +97,9 @@ struct MaterialEntryFormView: View {
             .onAppear {
                 if let entry {
                     quantityText = EntryFormatting.formatDecimal(entry.quantity, locale: locale)
+                    unitPriceText = entry.unitPrice.map {
+                        EntryFormatting.formatDecimal($0, locale: locale)
+                    } ?? ""
                 }
             }
             .alert("Could not save changes", isPresented: errorBinding) {
@@ -104,6 +123,8 @@ struct MaterialEntryFormView: View {
         let resolvedUnit = selectedUnit == "custom"
             ? customUnit.trimmingCharacters(in: .whitespacesAndNewlines)
             : selectedUnit
+        let trimmedPrice = unitPriceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let unitPrice = trimmedPrice.isEmpty ? nil : EntryFormatting.parseDecimal(trimmedPrice, locale: locale)
 
         showNameError = trimmedName.isEmpty
         showQuantityError = quantity == nil || quantity.map { $0 <= 0 } == true
@@ -111,7 +132,11 @@ struct MaterialEntryFormView: View {
         guard !trimmedName.isEmpty,
               let quantity,
               quantity > 0,
-              !resolvedUnit.isEmpty else {
+              !resolvedUnit.isEmpty,
+              trimmedPrice.isEmpty || unitPrice.map({ $0 >= 0 }) == true else {
+            if !trimmedPrice.isEmpty, unitPrice == nil || unitPrice.map({ $0 < 0 }) == true {
+                errorMessage = String(localized: "Enter a valid unit price using the local decimal separator.")
+            }
             return
         }
 
@@ -133,6 +158,7 @@ struct MaterialEntryFormView: View {
         savedEntry.quantity = quantity
         savedEntry.unit = resolvedUnit
         savedEntry.note = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        savedEntry.unitPrice = unitPrice
         savedEntry.updatedAt = .now
         job.updatedAt = .now
 
@@ -143,5 +169,13 @@ struct MaterialEntryFormView: View {
             modelContext.rollback()
             errorMessage = String(localized: "The material could not be saved. Try again.")
         }
+    }
+
+    private func apply(_ product: ProductCatalogItem) {
+        name = product.name
+        let isPreset = MaterialUnit.allCases.contains { $0.rawValue == product.unit }
+        selectedUnit = isPreset ? product.unit : "custom"
+        customUnit = isPreset ? "" : product.unit
+        unitPriceText = EntryFormatting.formatDecimal(product.unitPrice, locale: locale)
     }
 }

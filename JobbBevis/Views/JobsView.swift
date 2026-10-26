@@ -7,6 +7,7 @@ private enum JobFilter: String, CaseIterable, Identifiable {
     case planned
     case inProgress
     case completed
+    case archived
 
     var id: String { rawValue }
 
@@ -17,21 +18,24 @@ private enum JobFilter: String, CaseIterable, Identifiable {
         case .planned: "Planned"
         case .inProgress: "In progress"
         case .completed: "Completed"
+        case .archived: "Archived"
         }
     }
 
     func includes(_ job: JobRecord) -> Bool {
         switch self {
         case .active:
-            job.status != .completed
+            !job.isArchived && job.status != .completed
         case .all:
-            true
+            !job.isArchived
         case .planned:
-            job.status == .planned
+            !job.isArchived && job.status == .planned
         case .inProgress:
-            job.status == .inProgress
+            !job.isArchived && job.status == .inProgress
         case .completed:
-            job.status == .completed
+            !job.isArchived && job.status == .completed
+        case .archived:
+            job.isArchived
         }
     }
 }

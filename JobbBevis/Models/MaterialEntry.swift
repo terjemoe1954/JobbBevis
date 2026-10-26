@@ -34,6 +34,7 @@ final class MaterialEntry {
     var note: String
     var createdAt: Date
     var updatedAt: Date
+    var unitPrice: Decimal?
     var job: JobRecord
 
     init(
@@ -44,7 +45,8 @@ final class MaterialEntry {
         note: String = "",
         createdAt: Date = .now,
         updatedAt: Date = .now,
-        job: JobRecord
+        job: JobRecord,
+        unitPrice: Decimal? = nil
     ) {
         self.id = id
         self.name = name
@@ -53,6 +55,7 @@ final class MaterialEntry {
         self.note = note
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.unitPrice = unitPrice
         self.job = job
     }
 }

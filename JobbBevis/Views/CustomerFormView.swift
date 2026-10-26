@@ -12,7 +12,9 @@ struct CustomerFormView: View {
     @State private var phone: String
     @State private var email: String
     @State private var address: String
+    @State private var organizationNumber: String
     @State private var showNameError = false
+    @State private var showOrganizationNumberError = false
     @State private var errorMessage: String?
 
     init(customer: Customer? = nil, onSave: ((Customer) -> Void)? = nil) {
@@ -23,6 +25,7 @@ struct CustomerFormView: View {
         _phone = State(initialValue: customer?.phone ?? "")
         _email = State(initialValue: customer?.email ?? "")
         _address = State(initialValue: customer?.address ?? "")
+        _organizationNumber = State(initialValue: customer?.organizationNumber ?? "")
     }
 
     var body: some View {
@@ -36,6 +39,13 @@ struct CustomerFormView: View {
                             .foregroundStyle(.red)
                     }
                     TextField("Contact person", text: $contactPerson)
+                    TextField("Organization number", text: $organizationNumber)
+                        .keyboardType(.numbersAndPunctuation)
+                    if showOrganizationNumberError {
+                        Text("Enter a valid Norwegian organization number with 9 digits, or leave the field empty.")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
                     TextField("Phone", text: $phone)
                         .keyboardType(.phonePad)
                     TextField("Email", text: $email)
@@ -71,8 +81,13 @@ struct CustomerFormView: View {
 
     private func save() {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedOrganizationNumber = organizationNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+        let validOrganizationNumber = trimmedOrganizationNumber.isEmpty
+            ? nil
+            : NorwegianNumberValidator.organizationNumberDigits(from: trimmedOrganizationNumber)
         showNameError = trimmedName.isEmpty
-        guard !trimmedName.isEmpty else { return }
+        showOrganizationNumberError = !trimmedOrganizationNumber.isEmpty && validOrganizationNumber == nil
+        guard !trimmedName.isEmpty, !showOrganizationNumberError else { return }
 
         let savedCustomer: Customer
         if let customer {
@@ -87,6 +102,7 @@ struct CustomerFormView: View {
         savedCustomer.phone = phone.trimmingCharacters(in: .whitespacesAndNewlines)
         savedCustomer.email = email.trimmingCharacters(in: .whitespacesAndNewlines)
         savedCustomer.address = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        savedCustomer.organizationNumber = validOrganizationNumber
         savedCustomer.updatedAt = .now
 
         do {

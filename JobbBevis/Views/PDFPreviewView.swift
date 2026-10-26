@@ -5,12 +5,13 @@ import UIKit
 struct PDFPreviewView: View {
     @Environment(\.dismiss) private var dismiss
     let pdfURL: URL
+    var title: LocalizedStringResource = "Report preview"
     @State private var showPrintController = false
 
     var body: some View {
         NavigationStack {
             PDFDocumentView(url: pdfURL)
-                .navigationTitle("Report preview")
+                .navigationTitle(Text(title))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {

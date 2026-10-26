@@ -3,6 +3,9 @@ import SwiftUI
 enum AppSection: Hashable {
     case jobs
     case customers
+    case invoices
+    case accounting
+    case products
     case settings
 }
 
@@ -28,6 +31,15 @@ struct AppRootView: View {
                 NavigationLink(value: AppSection.customers) {
                     Label("Customers", systemImage: "person.2")
                 }
+                NavigationLink(value: AppSection.invoices) {
+                    Label("Invoices and approval", systemImage: "doc.text")
+                }
+                NavigationLink(value: AppSection.accounting) {
+                    Label("Transfer to accounting", systemImage: "arrow.right.arrow.left")
+                }
+                NavigationLink(value: AppSection.products) {
+                    Label("Product catalog", systemImage: "shippingbox")
+                }
                 NavigationLink(value: AppSection.settings) {
                     Label("Settings", systemImage: "gearshape")
                 }
@@ -39,6 +51,12 @@ struct AppRootView: View {
                 JobsView()
             case .customers:
                 CustomersView()
+            case .invoices:
+                InvoicesView()
+            case .accounting:
+                AccountingTransferView()
+            case .products:
+                NavigationStack { ProductCatalogView() }
             case .settings:
                 SettingsView()
             }

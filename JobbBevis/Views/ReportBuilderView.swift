@@ -10,6 +10,7 @@ struct ReportBuilderView: View {
     @State private var includesPhotos = true
     @State private var includesWorkLog = true
     @State private var includesMaterials = true
+    @State private var includesPriceEstimate = true
     @State private var isGenerating = false
     @State private var preview: ReportPreview?
     @State private var errorMessage: String?
@@ -21,6 +22,7 @@ struct ReportBuilderView: View {
                     Toggle("Photos", isOn: $includesPhotos)
                     Toggle("Work log", isOn: $includesWorkLog)
                     Toggle("Materials", isOn: $includesMaterials)
+                    Toggle("Price estimate", isOn: $includesPriceEstimate)
                 }
 
                 Section {
@@ -38,6 +40,14 @@ struct ReportBuilderView: View {
                         title: "Materials",
                         value: "\(job.materialEntries.count)",
                         isIncluded: includesMaterials
+                    )
+                    ReportSummaryRow(
+                        title: "Price estimate",
+                        value: PriceEstimateCalculator.currency(
+                            PriceEstimateCalculator.estimate(for: job).total,
+                            locale: locale
+                        ),
+                        isIncluded: includesPriceEstimate
                     )
                 } header: {
                     Text("Report contents")
@@ -90,7 +100,8 @@ struct ReportBuilderView: View {
                 options: ReportOptions(
                     includesPhotos: includesPhotos,
                     includesWorkLog: includesWorkLog,
-                    includesMaterials: includesMaterials
+                    includesMaterials: includesMaterials,
+                    includesPriceEstimate: includesPriceEstimate
                 ),
                 locale: locale
             )

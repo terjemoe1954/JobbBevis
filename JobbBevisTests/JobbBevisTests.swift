@@ -4,6 +4,12 @@ import JobbBevis
 
 @Suite("JobbBevis core behavior")
 struct JobbBevisTests {
+    @Test("Norwegian organization and bank account numbers validate their check digits")
+    @MainActor
+    func norwegianNumberValidation() {
+        #expect(CoreTestSupport.norwegianNumbersAreValidated())
+    }
+
     @Test("Duration formatting handles hours and minutes")
     @MainActor
     func durationFormatting() {
@@ -30,5 +36,17 @@ struct JobbBevisTests {
     @MainActor
     func backupRoundTrip() throws {
         #expect(try CoreTestSupport.backupRoundTripPreservesData())
+    }
+
+    @Test("Price estimate totals labor, materials, driving, and VAT")
+    @MainActor
+    func priceEstimate() throws {
+        #expect(try CoreTestSupport.priceEstimateTotalsAreCorrect())
+    }
+
+    @Test("Invoices and credit notes are unique, sequential, and preserve their snapshot")
+    @MainActor
+    func invoiceNumberingAndSnapshot() throws {
+        #expect(try CoreTestSupport.invoicesAreUniqueSequentialAndImmutable())
     }
 }

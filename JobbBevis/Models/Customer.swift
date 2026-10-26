@@ -3,12 +3,13 @@ import SwiftData
 
 @Model
 final class Customer {
-    @Attribute(.unique) var id: UUID
+    var id: UUID
     var name: String
     var contactPerson: String
     var phone: String
     var email: String
     var address: String
+    var organizationNumber: String?
     var createdAt: Date
     var updatedAt: Date
     var sampleDataMarker: Bool?
@@ -27,6 +28,7 @@ final class Customer {
         phone: String = "",
         email: String = "",
         address: String = "",
+        organizationNumber: String? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now,
         jobs: [JobRecord] = [],
@@ -38,6 +40,7 @@ final class Customer {
         self.phone = phone
         self.email = email
         self.address = address
+        self.organizationNumber = organizationNumber
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.sampleDataMarker = isSampleData ? true : nil

@@ -10,6 +10,10 @@ enum PersistenceService {
             JobPhoto.self,
             WorkEntry.self,
             MaterialEntry.self,
+            PurchaseItem.self,
+            ProductCatalogItem.self,
+            InvoiceRecord.self,
+            CreditNoteRecord.self,
             AppMetadata.self
         ])
         let supportURL = try FileManager.default.url(

@@ -32,6 +32,10 @@ struct BackupService {
         let photos = try context.fetch(FetchDescriptor<JobPhoto>())
         let workEntries = try context.fetch(FetchDescriptor<WorkEntry>())
         let materials = try context.fetch(FetchDescriptor<MaterialEntry>())
+        let purchaseItems = try context.fetch(FetchDescriptor<PurchaseItem>())
+        let products = try context.fetch(FetchDescriptor<ProductCatalogItem>())
+        let invoices = try context.fetch(FetchDescriptor<InvoiceRecord>())
+        let creditNotes = try context.fetch(FetchDescriptor<CreditNoteRecord>())
         let metadata = try context.fetch(FetchDescriptor<AppMetadata>())
 
         var files: [BackupFile] = []
@@ -54,6 +58,11 @@ struct BackupService {
                 phone: profile.phone,
                 email: profile.email,
                 address: profile.address,
+                bankAccount: profile.bankAccount,
+                isVATRegistered: profile.isVATRegistered,
+                isRegisteredInBusinessRegister: profile.isRegisteredInBusinessRegister,
+                defaultHourlyRate: profile.defaultHourlyRate,
+                defaultDrivingRatePerKilometer: profile.defaultDrivingRatePerKilometer,
                 logoFileID: logoFileID,
                 createdAt: profile.createdAt,
                 updatedAt: profile.updatedAt
@@ -90,6 +99,10 @@ struct BackupService {
                     photos: photoRecords.count,
                     workEntries: workEntries.count,
                     materials: materials.count,
+                    purchases: purchaseItems.count,
+                    products: products.count,
+                    invoices: invoices.count,
+                    creditNotes: creditNotes.count,
                     files: files.count
                 )
             ),
@@ -102,6 +115,7 @@ struct BackupService {
                     phone: $0.phone,
                     email: $0.email,
                     address: $0.address,
+                    organizationNumber: $0.organizationNumber,
                     createdAt: $0.createdAt,
                     updatedAt: $0.updatedAt,
                     isSampleData: $0.isSampleData
@@ -120,7 +134,15 @@ struct BackupService {
                     completedAt: $0.completedAt,
                     createdAt: $0.createdAt,
                     updatedAt: $0.updatedAt,
-                    isSampleData: $0.isSampleData
+                    isSampleData: $0.isSampleData,
+                    estimatedHours: $0.estimatedHours,
+                    hourlyRate: $0.hourlyRate,
+                    drivingKilometers: $0.drivingKilometers,
+                    drivingRatePerKilometer: $0.drivingRatePerKilometer,
+                    vatRatePercent: $0.vatRatePercent,
+                    hasInvoiceDraft: $0.hasInvoiceDraft,
+                    invoiceDraftDueDate: $0.invoiceDraftDueDate,
+                    archivedAt: $0.archivedAt
                 )
             },
             photos: photoRecords,
@@ -144,10 +166,49 @@ struct BackupService {
                     unit: $0.unit,
                     note: $0.note,
                     createdAt: $0.createdAt,
+                    updatedAt: $0.updatedAt,
+                    unitPrice: $0.unitPrice
+                )
+            },
+            purchaseItems: purchaseItems.map {
+                PurchaseRecord(
+                    id: $0.id,
+                    jobID: $0.job.id,
+                    supplier: $0.supplier,
+                    itemName: $0.itemName,
+                    quantity: $0.quantity,
+                    unit: $0.unit,
+                    unitPrice: $0.unitPrice,
+                    note: $0.note,
+                    createdAt: $0.createdAt,
                     updatedAt: $0.updatedAt
                 )
             },
-            metadata: metadata.map { MetadataRecord(id: $0.id, nextJobSequence: $0.nextJobSequence) },
+            products: products.map {
+                ProductRecord(id: $0.id, supplier: $0.supplier, name: $0.name, unit: $0.unit,
+                              unitPrice: $0.unitPrice, createdAt: $0.createdAt, updatedAt: $0.updatedAt)
+            },
+            invoices: invoices.map {
+                InvoiceBackupRecord(id: $0.id, invoiceNumber: $0.invoiceNumber, jobID: $0.jobID,
+                                    jobNumber: $0.jobNumber, issuedAt: $0.issuedAt, dueDate: $0.dueDate,
+                                    snapshotData: $0.snapshotData)
+            },
+            creditNotes: creditNotes.map {
+                CreditNoteBackupRecord(
+                    id: $0.id,
+                    creditNoteNumber: $0.creditNoteNumber,
+                    originalInvoiceID: $0.originalInvoiceID,
+                    originalInvoiceNumber: $0.originalInvoiceNumber,
+                    jobNumber: $0.jobNumber,
+                    issuedAt: $0.issuedAt,
+                    snapshotData: $0.snapshotData
+                )
+            },
+            metadata: metadata.map {
+                MetadataRecord(id: $0.id, nextJobSequence: $0.nextJobSequence,
+                               nextInvoiceSequence: $0.nextInvoiceSequence,
+                               nextCreditNoteSequence: $0.nextCreditNoteSequence)
+            },
             files: files
         )
 
@@ -251,13 +312,20 @@ struct BackupService {
             photos: archive.photos.count,
             workEntries: archive.workEntries.count,
             materials: archive.materials.count,
+            purchases: archive.purchaseItems?.count,
+            products: archive.products?.count,
+            invoices: archive.invoices?.count,
+            creditNotes: archive.creditNotes?.count,
             files: archive.files.count
         ) else {
             throw BackupError.countMismatch
         }
 
         let totalRecords = archive.companies.count + archive.customers.count + archive.jobs.count
-            + archive.photos.count + archive.workEntries.count + archive.materials.count + archive.metadata.count
+            + archive.photos.count + archive.workEntries.count + archive.materials.count
+            + (archive.purchaseItems?.count ?? 0) + (archive.products?.count ?? 0)
+            + (archive.invoices?.count ?? 0) + archive.metadata.count
+            + (archive.creditNotes?.count ?? 0)
         guard totalRecords <= Self.maximumRecords, archive.files.count <= Self.maximumFiles else {
             throw BackupError.tooManyRecords
         }
@@ -269,17 +337,54 @@ struct BackupService {
         try requireUnique(archive.photos.map(\.id))
         try requireUnique(archive.workEntries.map(\.id))
         try requireUnique(archive.materials.map(\.id))
+        try requireUnique((archive.purchaseItems ?? []).map(\.id))
+        try requireUnique((archive.products ?? []).map(\.id))
+        try requireUnique((archive.invoices ?? []).map(\.id))
+        try requireUnique((archive.invoices ?? []).map(\.invoiceNumber))
+        try requireUnique((archive.creditNotes ?? []).map(\.id))
+        try requireUnique((archive.creditNotes ?? []).map(\.creditNoteNumber))
+        try requireUnique((archive.creditNotes ?? []).map(\.originalInvoiceID))
         try requireUnique(archive.metadata.map(\.id))
         try requireUnique(archive.files.map(\.id))
         try requireUnique(archive.files.map(\.archivePath))
 
         let customerIDs = Set(archive.customers.map(\.id))
         let jobIDs = Set(archive.jobs.map(\.id))
+        let invoiceIDs = Set((archive.invoices ?? []).map(\.id))
         let fileIDs = Set(archive.files.map(\.id))
         guard archive.jobs.allSatisfy({ customerIDs.contains($0.customerID) }),
               archive.photos.allSatisfy({ jobIDs.contains($0.jobID) && fileIDs.contains($0.fileID) }),
               archive.workEntries.allSatisfy({ jobIDs.contains($0.jobID) && $0.durationMinutes > 0 }),
-              archive.materials.allSatisfy({ jobIDs.contains($0.jobID) && $0.quantity > 0 }),
+              archive.materials.allSatisfy({
+                  jobIDs.contains($0.jobID)
+                      && $0.quantity > 0
+                      && ($0.unitPrice == nil || $0.unitPrice.map { $0 >= 0 } == true)
+              }),
+              (archive.purchaseItems ?? []).allSatisfy({
+                  jobIDs.contains($0.jobID) && $0.quantity > 0 && $0.unitPrice >= 0
+              }),
+              (archive.products ?? []).allSatisfy({
+                  !$0.supplier.isEmpty && !$0.name.isEmpty && !$0.unit.isEmpty && $0.unitPrice >= 0
+              }),
+              (archive.invoices ?? []).allSatisfy({
+                  !$0.invoiceNumber.isEmpty && !$0.jobNumber.isEmpty
+                      && (try? JSONDecoder().decode(SalesDocumentSnapshot.self, from: $0.snapshotData)) != nil
+              }),
+              (archive.creditNotes ?? []).allSatisfy({
+                  invoiceIDs.contains($0.originalInvoiceID)
+                      && !$0.creditNoteNumber.isEmpty
+                      && !$0.originalInvoiceNumber.isEmpty
+                      && (try? JSONDecoder().decode(SalesDocumentSnapshot.self, from: $0.snapshotData)) != nil
+              }),
+              archive.jobs.allSatisfy({ record in
+                  [
+                      record.estimatedHours,
+                      record.hourlyRate,
+                      record.drivingKilometers,
+                      record.drivingRatePerKilometer,
+                      record.vatRatePercent
+                  ].compactMap { $0 }.allSatisfy { $0 >= 0 }
+              }),
               archive.jobs.allSatisfy({ JobStatus(rawValue: $0.status) != nil })
         else {
             throw BackupError.invalidReferences
@@ -371,10 +476,20 @@ struct BackupService {
     }
 
     private func replaceModels(with archive: BackupArchive, in context: ModelContext) throws {
+        let preservedInvoices = try context.fetch(FetchDescriptor<InvoiceRecord>())
+        let preservedCreditNotes = try context.fetch(FetchDescriptor<CreditNoteRecord>())
+        let preservedNextInvoiceSequence = try context.fetch(FetchDescriptor<AppMetadata>())
+            .compactMap(\.nextInvoiceSequence)
+            .max() ?? 1
+        let preservedNextCreditNoteSequence = try context.fetch(FetchDescriptor<AppMetadata>())
+            .compactMap(\.nextCreditNoteSequence)
+            .max() ?? 1
         try context.transaction {
             for model in try context.fetch(FetchDescriptor<JobPhoto>()) { context.delete(model) }
             for model in try context.fetch(FetchDescriptor<WorkEntry>()) { context.delete(model) }
             for model in try context.fetch(FetchDescriptor<MaterialEntry>()) { context.delete(model) }
+            for model in try context.fetch(FetchDescriptor<PurchaseItem>()) { context.delete(model) }
+            for model in try context.fetch(FetchDescriptor<ProductCatalogItem>()) { context.delete(model) }
             for model in try context.fetch(FetchDescriptor<JobRecord>()) { context.delete(model) }
             for model in try context.fetch(FetchDescriptor<Customer>()) { context.delete(model) }
             for model in try context.fetch(FetchDescriptor<CompanyProfile>()) { context.delete(model) }
@@ -389,6 +504,7 @@ struct BackupService {
                     phone: record.phone,
                     email: record.email,
                     address: record.address,
+                    organizationNumber: record.organizationNumber,
                     createdAt: record.createdAt,
                     updatedAt: record.updatedAt,
                     isSampleData: record.isSampleData ?? false
@@ -415,7 +531,15 @@ struct BackupService {
                     completedAt: record.completedAt,
                     createdAt: record.createdAt,
                     updatedAt: record.updatedAt,
-                    isSampleData: record.isSampleData ?? false
+                    isSampleData: record.isSampleData ?? false,
+                    estimatedHours: record.estimatedHours,
+                    hourlyRate: record.hourlyRate,
+                    drivingKilometers: record.drivingKilometers,
+                    drivingRatePerKilometer: record.drivingRatePerKilometer,
+                    vatRatePercent: record.vatRatePercent,
+                    hasInvoiceDraft: record.hasInvoiceDraft ?? false,
+                    invoiceDraftDueDate: record.invoiceDraftDueDate,
+                    archivedAt: record.archivedAt
                 )
                 jobByID[record.id] = job
                 context.insert(job)
@@ -460,8 +584,78 @@ struct BackupService {
                     note: record.note,
                     createdAt: record.createdAt,
                     updatedAt: record.updatedAt,
+                    job: job,
+                    unitPrice: record.unitPrice
+                ))
+            }
+
+            for record in archive.purchaseItems ?? [] {
+                guard let job = jobByID[record.jobID] else { throw BackupError.invalidReferences }
+                context.insert(PurchaseItem(
+                    id: record.id,
+                    supplier: record.supplier,
+                    itemName: record.itemName,
+                    quantity: record.quantity,
+                    unit: record.unit,
+                    unitPrice: record.unitPrice,
+                    note: record.note,
+                    createdAt: record.createdAt,
+                    updatedAt: record.updatedAt,
                     job: job
                 ))
+            }
+
+            for record in archive.products ?? [] {
+                context.insert(ProductCatalogItem(
+                    id: record.id, supplier: record.supplier, name: record.name, unit: record.unit,
+                    unitPrice: record.unitPrice, createdAt: record.createdAt, updatedAt: record.updatedAt
+                ))
+            }
+
+            var invoiceIDs = Set(preservedInvoices.map(\.id))
+            var invoiceNumbers = Set(preservedInvoices.map(\.invoiceNumber))
+            for record in archive.invoices ?? [] {
+                if invoiceIDs.contains(record.id) && invoiceNumbers.contains(record.invoiceNumber) {
+                    continue
+                }
+                guard !invoiceIDs.contains(record.id), !invoiceNumbers.contains(record.invoiceNumber) else {
+                    throw BackupError.duplicateIdentifier
+                }
+                context.insert(InvoiceRecord(
+                    id: record.id, invoiceNumber: record.invoiceNumber, jobID: record.jobID,
+                    jobNumber: record.jobNumber, issuedAt: record.issuedAt, dueDate: record.dueDate,
+                    snapshotData: record.snapshotData
+                ))
+                invoiceIDs.insert(record.id)
+                invoiceNumbers.insert(record.invoiceNumber)
+            }
+
+            var creditNoteIDs = Set(preservedCreditNotes.map(\.id))
+            var creditNoteNumbers = Set(preservedCreditNotes.map(\.creditNoteNumber))
+            var creditedInvoiceIDs = Set(preservedCreditNotes.map(\.originalInvoiceID))
+            for record in archive.creditNotes ?? [] {
+                if creditNoteIDs.contains(record.id)
+                    && creditNoteNumbers.contains(record.creditNoteNumber)
+                    && creditedInvoiceIDs.contains(record.originalInvoiceID) {
+                    continue
+                }
+                guard !creditNoteIDs.contains(record.id),
+                      !creditNoteNumbers.contains(record.creditNoteNumber),
+                      !creditedInvoiceIDs.contains(record.originalInvoiceID) else {
+                    throw BackupError.duplicateIdentifier
+                }
+                context.insert(CreditNoteRecord(
+                    id: record.id,
+                    creditNoteNumber: record.creditNoteNumber,
+                    originalInvoiceID: record.originalInvoiceID,
+                    originalInvoiceNumber: record.originalInvoiceNumber,
+                    jobNumber: record.jobNumber,
+                    issuedAt: record.issuedAt,
+                    snapshotData: record.snapshotData
+                ))
+                creditNoteIDs.insert(record.id)
+                creditNoteNumbers.insert(record.creditNoteNumber)
+                creditedInvoiceIDs.insert(record.originalInvoiceID)
             }
 
             for record in archive.companies {
@@ -472,13 +666,40 @@ struct BackupService {
                     phone: record.phone,
                     email: record.email,
                     address: record.address,
+                    bankAccount: record.bankAccount,
+                    isVATRegistered: record.isVATRegistered ?? false,
+                    isRegisteredInBusinessRegister: record.isRegisteredInBusinessRegister ?? false,
+                    defaultHourlyRate: record.defaultHourlyRate,
+                    defaultDrivingRatePerKilometer: record.defaultDrivingRatePerKilometer,
                     logoRelativePath: record.logoFileID == nil ? nil : "Logos/\(record.id.uuidString).image",
                     createdAt: record.createdAt,
                     updatedAt: record.updatedAt
                 ))
             }
+            let nextAfterKnownInvoices = invoiceNumbers.compactMap { number in
+                number.split(separator: "-").last.flatMap { Int($0) }
+            }.max().map { $0 + 1 } ?? 1
+            let nextAfterKnownCreditNotes = creditNoteNumbers.compactMap { number in
+                number.split(separator: "-").last.flatMap { Int($0) }
+            }.max().map { $0 + 1 } ?? 1
             for record in archive.metadata {
-                context.insert(AppMetadata(id: record.id, nextJobSequence: record.nextJobSequence))
+                context.insert(AppMetadata(id: record.id, nextJobSequence: record.nextJobSequence,
+                                           nextInvoiceSequence: max(
+                                               record.nextInvoiceSequence ?? 1,
+                                               preservedNextInvoiceSequence,
+                                               nextAfterKnownInvoices
+                                           ),
+                                           nextCreditNoteSequence: max(
+                                               record.nextCreditNoteSequence ?? 1,
+                                               preservedNextCreditNoteSequence,
+                                               nextAfterKnownCreditNotes
+                                           )))
+            }
+            if archive.metadata.isEmpty {
+                context.insert(AppMetadata(
+                    nextInvoiceSequence: max(preservedNextInvoiceSequence, nextAfterKnownInvoices),
+                    nextCreditNoteSequence: max(preservedNextCreditNoteSequence, nextAfterKnownCreditNotes)
+                ))
             }
         }
     }
@@ -556,6 +777,10 @@ private struct BackupArchive: Codable {
     let photos: [PhotoRecord]
     let workEntries: [WorkRecord]
     let materials: [MaterialRecord]
+    let purchaseItems: [PurchaseRecord]?
+    let products: [ProductRecord]?
+    let invoices: [InvoiceBackupRecord]?
+    let creditNotes: [CreditNoteBackupRecord]?
     let metadata: [MetadataRecord]
     let files: [BackupFile]
 }
@@ -575,6 +800,10 @@ private struct BackupCounts: Codable, Equatable {
     let photos: Int
     let workEntries: Int
     let materials: Int
+    let purchases: Int?
+    let products: Int?
+    let invoices: Int?
+    let creditNotes: Int?
     let files: Int
 }
 
@@ -585,6 +814,11 @@ private struct CompanyRecord: Codable {
     let phone: String
     let email: String
     let address: String
+    let bankAccount: String?
+    let isVATRegistered: Bool?
+    let isRegisteredInBusinessRegister: Bool?
+    let defaultHourlyRate: Decimal?
+    let defaultDrivingRatePerKilometer: Decimal?
     let logoFileID: UUID?
     let createdAt: Date
     let updatedAt: Date
@@ -597,6 +831,7 @@ private struct CustomerRecord: Codable {
     let phone: String
     let email: String
     let address: String
+    let organizationNumber: String?
     let createdAt: Date
     let updatedAt: Date
     let isSampleData: Bool?
@@ -615,6 +850,14 @@ private struct JobRecordBackup: Codable {
     let createdAt: Date
     let updatedAt: Date
     let isSampleData: Bool?
+    let estimatedHours: Decimal?
+    let hourlyRate: Decimal?
+    let drivingKilometers: Decimal?
+    let drivingRatePerKilometer: Decimal?
+    let vatRatePercent: Decimal?
+    let hasInvoiceDraft: Bool?
+    let invoiceDraftDueDate: Date?
+    let archivedAt: Date?
 }
 
 private struct PhotoRecord: Codable {
@@ -646,11 +889,57 @@ private struct MaterialRecord: Codable {
     let note: String
     let createdAt: Date
     let updatedAt: Date
+    let unitPrice: Decimal?
+}
+
+private struct PurchaseRecord: Codable {
+    let id: UUID
+    let jobID: UUID
+    let supplier: String
+    let itemName: String
+    let quantity: Decimal
+    let unit: String
+    let unitPrice: Decimal
+    let note: String
+    let createdAt: Date
+    let updatedAt: Date
 }
 
 private struct MetadataRecord: Codable {
     let id: String
     let nextJobSequence: Int
+    let nextInvoiceSequence: Int?
+    let nextCreditNoteSequence: Int?
+}
+
+private struct ProductRecord: Codable {
+    let id: UUID
+    let supplier: String
+    let name: String
+    let unit: String
+    let unitPrice: Decimal
+    let createdAt: Date
+    let updatedAt: Date
+}
+
+private struct InvoiceBackupRecord: Codable {
+    let id: UUID
+    let invoiceNumber: String
+    let jobID: UUID
+    let jobNumber: String
+    let issuedAt: Date
+    let dueDate: Date
+    let snapshotData: Data
+}
+
+private struct CreditNoteBackupRecord: Codable {
+    let id: UUID
+    let creditNoteNumber: String
+    let originalInvoiceID: UUID
+    let originalInvoiceNumber: String
+    let jobNumber: String
+    let issuedAt: Date
+    let snapshotData: Data
 }
 
 private struct BackupFile: Codable {

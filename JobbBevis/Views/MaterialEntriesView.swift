@@ -112,6 +112,11 @@ private struct MaterialEntryRow: View {
                 Text(entry.note)
                     .lineLimit(2)
             }
+            if let unitPrice = entry.unitPrice {
+                Text("Unit price: \(PriceEstimateCalculator.currency(unitPrice, locale: locale))")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
         .contentShape(Rectangle())
     }
@@ -141,7 +146,7 @@ private struct MaterialEmptyState: View {
         ContentUnavailableView {
             Label("No materials", systemImage: "shippingbox")
         } description: {
-            Text("Add materials used for this job. Prices are not included.")
+            Text("Add materials used for this job. Unit price is optional.")
         } actions: {
             Button("Add material", systemImage: "plus", action: addEntry)
         }

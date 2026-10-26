@@ -30,6 +30,14 @@ final class JobRecord {
     var createdAt: Date
     var updatedAt: Date
     var sampleDataMarker: Bool?
+    var estimatedHours: Decimal?
+    var hourlyRate: Decimal?
+    var drivingKilometers: Decimal?
+    var drivingRatePerKilometer: Decimal?
+    var vatRatePercent: Decimal?
+    var invoiceDraftMarker: Bool?
+    var invoiceDraftDueDate: Date?
+    var archivedAt: Date?
     var customer: Customer
     @Relationship(deleteRule: .cascade, inverse: \JobPhoto.job)
     var photos: [JobPhoto]
@@ -37,10 +45,27 @@ final class JobRecord {
     var workEntries: [WorkEntry]
     @Relationship(deleteRule: .cascade, inverse: \MaterialEntry.job)
     var materialEntries: [MaterialEntry]
+    @Relationship(deleteRule: .cascade, inverse: \PurchaseItem.job)
+    var purchaseItems: [PurchaseItem]
 
     var isSampleData: Bool {
         get { sampleDataMarker ?? false }
         set { sampleDataMarker = newValue }
+    }
+
+    var hasInvoiceDraft: Bool {
+        get { invoiceDraftMarker ?? false }
+        set {
+            invoiceDraftMarker = newValue ? true : nil
+            if !newValue {
+                invoiceDraftDueDate = nil
+            }
+            updatedAt = .now
+        }
+    }
+
+    var isArchived: Bool {
+        archivedAt != nil
     }
 
     var status: JobStatus {
@@ -67,7 +92,16 @@ final class JobRecord {
         photos: [JobPhoto] = [],
         workEntries: [WorkEntry] = [],
         materialEntries: [MaterialEntry] = [],
-        isSampleData: Bool = false
+        purchaseItems: [PurchaseItem] = [],
+        isSampleData: Bool = false,
+        estimatedHours: Decimal? = nil,
+        hourlyRate: Decimal? = nil,
+        drivingKilometers: Decimal? = nil,
+        drivingRatePerKilometer: Decimal? = nil,
+        vatRatePercent: Decimal? = nil,
+        hasInvoiceDraft: Bool = false,
+        invoiceDraftDueDate: Date? = nil,
+        archivedAt: Date? = nil
     ) {
         self.id = id
         self.jobNumber = jobNumber
@@ -81,9 +115,18 @@ final class JobRecord {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.sampleDataMarker = isSampleData ? true : nil
+        self.estimatedHours = estimatedHours
+        self.hourlyRate = hourlyRate
+        self.drivingKilometers = drivingKilometers
+        self.drivingRatePerKilometer = drivingRatePerKilometer
+        self.vatRatePercent = vatRatePercent
+        self.invoiceDraftMarker = hasInvoiceDraft ? true : nil
+        self.invoiceDraftDueDate = hasInvoiceDraft ? invoiceDraftDueDate : nil
+        self.archivedAt = archivedAt
         self.photos = photos
         self.workEntries = workEntries
         self.materialEntries = materialEntries
+        self.purchaseItems = purchaseItems
     }
 }
 
@@ -91,9 +134,18 @@ final class JobRecord {
 final class AppMetadata {
     @Attribute(.unique) var id: String
     var nextJobSequence: Int
+    var nextInvoiceSequence: Int?
+    var nextCreditNoteSequence: Int?
 
-    init(id: String = "main", nextJobSequence: Int = 1) {
+    init(
+        id: String = "main",
+        nextJobSequence: Int = 1,
+        nextInvoiceSequence: Int = 1,
+        nextCreditNoteSequence: Int = 1
+    ) {
         self.id = id
         self.nextJobSequence = nextJobSequence
+        self.nextInvoiceSequence = nextInvoiceSequence
+        self.nextCreditNoteSequence = nextCreditNoteSequence
     }
 }

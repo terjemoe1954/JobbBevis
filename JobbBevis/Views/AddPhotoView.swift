@@ -3,6 +3,7 @@ import PhotosUI
 import SwiftData
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct AddPhotoView: View {
     @Environment(\.dismiss) private var dismiss
@@ -14,6 +15,7 @@ struct AddPhotoView: View {
     @State private var category = PhotoCategory.during
     @State private var caption = ""
     @State private var isImporting = false
+    @State private var showFileImporter = false
     @State private var showCamera = false
     @State private var showCameraUnavailable = false
     @State private var showCameraDenied = false
@@ -41,6 +43,10 @@ struct AddPhotoView: View {
                         Label("Choose from library", systemImage: "photo.on.rectangle")
                     }
 
+                    Button("Choose from Files", systemImage: "folder") {
+                        showFileImporter = true
+                    }
+
                     Button("Take photo", systemImage: "camera", action: requestCamera)
                 }
 
@@ -64,6 +70,12 @@ struct AddPhotoView: View {
                         .disabled(selectedItems.isEmpty || isImporting)
                 }
             }
+            .fileImporter(
+                isPresented: $showFileImporter,
+                allowedContentTypes: [.image],
+                allowsMultipleSelection: true,
+                onCompletion: importFiles
+            )
             .fullScreenCover(isPresented: $showCamera) {
                 CameraCaptureView(
                     onCapture: { image in
@@ -149,6 +161,35 @@ struct AddPhotoView: View {
                 errorMessage = String(localized: "The photos could not be imported. Try again.")
             }
         }
+    }
+
+    private func importFiles(_ result: Result<[URL], any Error>) {
+        guard case .success(let urls) = result else {
+            errorMessage = String(localized: "The photos could not be imported. Try again.")
+            return
+        }
+
+        Task {
+            isImporting = true
+            defer { isImporting = false }
+            do {
+                let dataItems = try urls.prefix(20).map(readImageData)
+                try await save(dataItems)
+                dismiss()
+            } catch {
+                errorMessage = String(localized: "The photos could not be imported. Try again.")
+            }
+        }
+    }
+
+    private func readImageData(from url: URL) throws -> Data {
+        let hasAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if hasAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        return try Data(contentsOf: url, options: .mappedIfSafe)
     }
 
     private func importCapturedImage(_ image: UIImage) {

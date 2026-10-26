@@ -6,6 +6,7 @@ struct ReportOptions {
     var includesPhotos = true
     var includesWorkLog = true
     var includesMaterials = true
+    var includesPriceEstimate = true
 }
 
 @MainActor
@@ -64,6 +65,13 @@ struct PDFReportService {
                 case "Image unavailable": String(localized: LocalizedStringResource("Image unavailable", locale: locale))
                 case "Registered": String(localized: LocalizedStringResource("Registered", locale: locale))
                 case "Sample data – not a real customer or job": String(localized: LocalizedStringResource("Sample data – not a real customer or job", locale: locale))
+                case "Price estimate": String(localized: LocalizedStringResource("Price estimate", locale: locale))
+                case "Labor": String(localized: LocalizedStringResource("Labor", locale: locale))
+                case "Driving": String(localized: LocalizedStringResource("Driving", locale: locale))
+                case "Subtotal excluding VAT": String(localized: LocalizedStringResource("Subtotal excluding VAT", locale: locale))
+                case "VAT": String(localized: LocalizedStringResource("VAT", locale: locale))
+                case "Suggested total price": String(localized: LocalizedStringResource("Suggested total price", locale: locale))
+                case "This is a non-binding price estimate, not an invoice or payment request.": String(localized: LocalizedStringResource("This is a non-binding price estimate, not an invoice or payment request.", locale: locale))
                 default: key
                 }
             }
@@ -108,7 +116,7 @@ struct PDFReportService {
                         height: footerHeight
                     ),
                     font: .systemFont(ofSize: 9),
-                    color: .secondaryLabel,
+                    color: .darkGray,
                     alignment: .center
                 )
             }
@@ -130,7 +138,7 @@ struct PDFReportService {
             func addText(
                 _ text: String,
                 font: UIFont,
-                color: UIColor = .label,
+                color: UIColor = .black,
                 spacingAfter: CGFloat = 8
             ) {
                 guard !text.isEmpty else { return }
@@ -177,14 +185,14 @@ struct PDFReportService {
                 addText(
                     "\(label): \(value)",
                     font: .systemFont(ofSize: 11),
-                    color: .label,
+                    color: .black,
                     spacingAfter: 5
                 )
             }
 
             func addDivider() {
                 ensureSpace(10)
-                UIColor.separator.setStroke()
+                UIColor.lightGray.setStroke()
                 let path = UIBezierPath()
                 path.move(to: CGPoint(x: margin, y: y + 3))
                 path.addLine(to: CGPoint(x: pageRect.width - margin, y: y + 3))
@@ -207,7 +215,7 @@ struct PDFReportService {
                 let companyLines = [company.organizationNumber, company.address, company.phone, company.email]
                     .filter { !$0.isEmpty }
                 for line in companyLines {
-                    addText(line, font: .systemFont(ofSize: 9), color: .secondaryLabel, spacingAfter: 2)
+                    addText(line, font: .systemFont(ofSize: 9), color: .darkGray, spacingAfter: 2)
                 }
                 y += 8
             }
@@ -249,7 +257,7 @@ struct PDFReportService {
                     addText(
                         EntryFormatting.duration(totalMinutes: entry.durationMinutes),
                         font: .systemFont(ofSize: 10),
-                        color: .secondaryLabel,
+                        color: .darkGray,
                         spacingAfter: 5
                     )
                     addDivider()
@@ -273,11 +281,34 @@ struct PDFReportService {
                         unit = material.unit
                     }
                     addText(material.name, font: .boldSystemFont(ofSize: 11), spacingAfter: 3)
-                    addText("\(quantity) \(unit)", font: .systemFont(ofSize: 10), spacingAfter: 3)
+                    let price = material.unitPrice.map {
+                        " · " + PriceEstimateCalculator.currency($0, locale: locale)
+                    } ?? ""
+                    addText("\(quantity) \(unit)\(price)", font: .systemFont(ofSize: 10), spacingAfter: 3)
                     if !material.note.isEmpty {
-                        addText(material.note, font: .systemFont(ofSize: 10), color: .secondaryLabel, spacingAfter: 5)
+                        addText(material.note, font: .systemFont(ofSize: 10), color: .darkGray, spacingAfter: 5)
                     }
                     addDivider()
+                }
+            }
+
+            if options.includesPriceEstimate {
+                let estimate = PriceEstimateCalculator.estimate(for: job)
+                if estimate.subtotal > 0 {
+                    addSectionTitle(localized("Price estimate"))
+                    addLabeledValue(localized("Labor"), value: PriceEstimateCalculator.currency(estimate.labor, locale: locale))
+                    addLabeledValue(localized("Materials"), value: PriceEstimateCalculator.currency(estimate.materials, locale: locale))
+                    addLabeledValue(localized("Driving"), value: PriceEstimateCalculator.currency(estimate.driving, locale: locale))
+                    addLabeledValue(localized("Subtotal excluding VAT"), value: PriceEstimateCalculator.currency(estimate.subtotal, locale: locale))
+                    if job.vatRatePercent != nil {
+                        addLabeledValue(localized("VAT"), value: PriceEstimateCalculator.currency(estimate.vat, locale: locale))
+                    }
+                    addLabeledValue(localized("Suggested total price"), value: PriceEstimateCalculator.currency(estimate.total, locale: locale))
+                    addText(
+                        localized("This is a non-binding price estimate, not an invoice or payment request."),
+                        font: .italicSystemFont(ofSize: 9),
+                        color: .darkGray
+                    )
                 }
             }
 
@@ -301,7 +332,7 @@ struct PDFReportService {
                     } else {
                         ensureSpace(80)
                         addText(localizedCategory(photo.category), font: .boldSystemFont(ofSize: 12), spacingAfter: 5)
-                        addText(localized("Image unavailable"), font: .italicSystemFont(ofSize: 10), color: .secondaryLabel)
+                        addText(localized("Image unavailable"), font: .italicSystemFont(ofSize: 10), color: .darkGray)
                     }
                     if !photo.caption.isEmpty {
                         addText(photo.caption, font: .systemFont(ofSize: 10), spacingAfter: 4)
@@ -309,7 +340,7 @@ struct PDFReportService {
                     addText(
                         localized("Registered") + ": " + photo.registeredAt.formatted(.dateTime.day().month().year().locale(locale)),
                         font: .systemFont(ofSize: 9),
-                        color: .secondaryLabel,
+                        color: .darkGray,
                         spacingAfter: 8
                     )
                     addDivider()
