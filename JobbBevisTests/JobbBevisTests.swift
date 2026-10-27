@@ -49,4 +49,10 @@ struct JobbBevisTests {
     func invoiceNumberingAndSnapshot() throws {
         #expect(try CoreTestSupport.invoicesAreUniqueSequentialAndImmutable())
     }
+
+    @Test("Accounting CSV contains invoice lines and safely escaped values")
+    @MainActor
+    func accountingCSVExport() throws {
+        #expect(try CoreTestSupport.accountingCSVContainsInvoiceLines())
+    }
 }

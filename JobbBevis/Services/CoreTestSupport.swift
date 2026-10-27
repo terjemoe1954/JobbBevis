@@ -223,6 +223,86 @@ public enum CoreTestSupport {
             && first.snapshot?.total == 2_500
     }
 
+    public static func accountingCSVContainsInvoiceLines() throws -> Bool {
+        let snapshot = SalesDocumentSnapshot(
+            sellerName: "Test Company",
+            sellerOrganizationNumber: "123456785",
+            sellerAddress: "Seller Street 1",
+            sellerPhone: "",
+            sellerEmail: "",
+            sellerBankAccount: "1234.45.68454",
+            sellerIsVATRegistered: true,
+            sellerIsRegisteredInBusinessRegister: true,
+            customerName: "Customer, AS",
+            customerOrganizationNumber: "987654321",
+            customerAddress: "Customer Street 2",
+            jobNumber: "JB-0001",
+            jobTitle: "CSV test",
+            deliveryDate: Date(timeIntervalSince1970: 0),
+            deliveryAddress: "Customer Street 2",
+            lines: [
+                SalesDocumentLine(
+                    id: UUID(), description: "Work \"including materials\"", quantity: 2,
+                    unit: "h", unitPrice: 1_000, vatRatePercent: 25
+                )
+            ]
+        )
+        let invoice = InvoiceRecord(
+            invoiceNumber: "2026-00001",
+            jobID: UUID(),
+            jobNumber: "JB-0001",
+            issuedAt: Date(timeIntervalSince1970: 0),
+            dueDate: Date(timeIntervalSince1970: 86_400),
+            snapshotData: try JSONEncoder().encode(snapshot)
+        )
+        let data = try AccountingCSVExportService().exportData(invoices: [invoice])
+        guard let csv = String(data: data, encoding: .utf8) else { return false }
+        return csv.contains("\"invoice_number\"")
+            && csv.contains("\"2026-00001\"")
+            && csv.contains("\"Customer, AS\"")
+            && csv.contains("\"Work \"\"including materials\"\"\"")
+            && csv.contains("\"2500\"")
+    }
+
+    public static func accountingReportIsPDF() throws -> Bool {
+        let snapshot = SalesDocumentSnapshot(
+            sellerName: "Test Company",
+            sellerOrganizationNumber: "123456785",
+            sellerAddress: "Seller Street 1",
+            sellerPhone: "",
+            sellerEmail: "",
+            sellerBankAccount: "1234.45.68454",
+            sellerIsVATRegistered: true,
+            sellerIsRegisteredInBusinessRegister: true,
+            customerName: "Test Customer",
+            customerOrganizationNumber: "987654321",
+            customerAddress: "Customer Street 2",
+            jobNumber: "JB-0001",
+            jobTitle: "PDF test",
+            deliveryDate: .now,
+            deliveryAddress: "Customer Street 2",
+            lines: [
+                SalesDocumentLine(
+                    id: UUID(), description: "Work", quantity: 2,
+                    unit: "h", unitPrice: 1_000, vatRatePercent: 25
+                )
+            ]
+        )
+        let invoice = InvoiceRecord(
+            invoiceNumber: "2026-00001",
+            jobID: UUID(),
+            jobNumber: "JB-0001",
+            issuedAt: .now,
+            dueDate: .now.addingTimeInterval(86_400),
+            snapshotData: try JSONEncoder().encode(snapshot)
+        )
+        let data = try AccountingReportPDFService().exportData(
+            invoices: [invoice],
+            locale: Locale(identifier: "nb_NO")
+        )
+        return data.count > 1_000 && data.starts(with: Data("%PDF".utf8))
+    }
+
     private static func makeContext() throws -> ModelContext {
         let schema = Schema([
             CompanyProfile.self,

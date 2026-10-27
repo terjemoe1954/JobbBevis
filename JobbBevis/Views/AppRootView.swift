@@ -38,7 +38,7 @@ struct AppRootView: View {
                     Label("Invoices and approval", systemImage: "doc.text")
                 }
                 NavigationLink(value: AppSection.accounting) {
-                    Label("Transfer to accounting", systemImage: "arrow.right.arrow.left")
+                    Label("Export to accounting", systemImage: "square.and.arrow.up")
                 }
                 NavigationLink(value: AppSection.products) {
                     Label("Product catalog", systemImage: "shippingbox")
