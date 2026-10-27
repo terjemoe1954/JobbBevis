@@ -27,16 +27,23 @@ struct ProductCatalogView: View {
                         productToEdit = product
                     } label: {
                         ProductCatalogRow(product: product, locale: locale)
+                            .appCard()
                     }
                     .buttonStyle(.plain)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
                     .swipeActions {
                         Button("Delete", systemImage: "trash", role: .destructive) {
                             productToDelete = product
                         }
                     }
                 }
+                .listStyle(.plain)
+                .appListAppearance()
             }
         }
+        .background(AppBackground())
         .navigationTitle("Product catalog")
         .toolbar {
             Button("Add product", systemImage: "plus") { isAdding = true }
@@ -82,24 +89,28 @@ private struct ProductCatalogRow: View {
     let locale: Locale
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(product.name).font(.headline)
-            if let itemNumber = product.itemNumber, !itemNumber.isEmpty {
-                Text("Item no. \(itemNumber)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Text(product.supplierRecord?.name ?? product.supplier).foregroundStyle(.secondary)
-            HStack(spacing: 4) {
-                Text("Unit price: \(PriceEstimateCalculator.currency(product.unitPrice, locale: locale))")
-                Text("/")
-                if let unit = MaterialUnit(rawValue: product.unit) {
-                    Text(unit.abbreviation)
-                } else {
-                    Text(product.unit)
+        HStack(alignment: .top, spacing: 12) {
+            FeatureIcon(systemImage: "shippingbox.fill", color: .purple)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(product.name).font(.headline)
+                if let itemNumber = product.itemNumber, !itemNumber.isEmpty {
+                    Text("Item no. \(itemNumber)")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.tint)
                 }
+                Label(product.supplierRecord?.name ?? product.supplier, systemImage: "truck.box")
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Text("Unit price: \(PriceEstimateCalculator.currency(product.unitPrice, locale: locale))")
+                    Text("/")
+                    if let unit = MaterialUnit(rawValue: product.unit) {
+                        Text(unit.abbreviation)
+                    } else {
+                        Text(product.unit)
+                    }
+                }
+                .font(.subheadline)
             }
-            .font(.subheadline)
         }
         .contentShape(Rectangle())
     }

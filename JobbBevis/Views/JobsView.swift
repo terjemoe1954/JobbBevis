@@ -69,8 +69,14 @@ struct JobsView: View {
                             JobDetailView(job: job)
                         } label: {
                             JobRowView(job: job)
+                                .appCard()
                         }
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
                     }
+                    .listStyle(.plain)
+                    .appListAppearance()
                 }
             }
             .navigationTitle("Jobs")

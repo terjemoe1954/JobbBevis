@@ -29,27 +29,28 @@ struct AppRootView: View {
         NavigationSplitView {
             List(selection: $selection) {
                 NavigationLink(value: AppSection.jobs) {
-                    Label("Jobs", systemImage: "hammer")
+                    SidebarLabel(title: "Jobs", systemImage: "hammer.fill", color: .orange)
                 }
                 NavigationLink(value: AppSection.customers) {
-                    Label("Customers", systemImage: "person.2")
+                    SidebarLabel(title: "Customers", systemImage: "person.2.fill", color: .blue)
                 }
                 NavigationLink(value: AppSection.invoices) {
-                    Label("Invoices and approval", systemImage: "doc.text")
+                    SidebarLabel(title: "Invoices and approval", systemImage: "doc.text.fill", color: .indigo)
                 }
                 NavigationLink(value: AppSection.accounting) {
-                    Label("Export to accounting", systemImage: "square.and.arrow.up")
+                    SidebarLabel(title: "Export to accounting", systemImage: "chart.bar.doc.horizontal.fill", color: .green)
                 }
                 NavigationLink(value: AppSection.products) {
-                    Label("Product catalog", systemImage: "shippingbox")
+                    SidebarLabel(title: "Product catalog", systemImage: "shippingbox.fill", color: .purple)
                 }
                 NavigationLink(value: AppSection.suppliers) {
-                    Label("Suppliers", systemImage: "truck.box")
+                    SidebarLabel(title: "Suppliers", systemImage: "truck.box.fill", color: .teal)
                 }
                 NavigationLink(value: AppSection.settings) {
-                    Label("Settings", systemImage: "gearshape")
+                    SidebarLabel(title: "Settings", systemImage: "gearshape.fill", color: .gray)
                 }
             }
+            .appListAppearance()
             .navigationTitle("JobbBevis")
         } detail: {
             switch selection ?? .jobs {
@@ -74,5 +75,19 @@ struct AppRootView: View {
         .task {
             try? DataMigrationService.migrateLegacyCatalogData(in: modelContext)
         }
+    }
+}
+
+private struct SidebarLabel: View {
+    let title: LocalizedStringResource
+    let systemImage: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 11) {
+            FeatureIcon(systemImage: systemImage, color: color)
+            Text(title)
+        }
+        .padding(.vertical, 3)
     }
 }

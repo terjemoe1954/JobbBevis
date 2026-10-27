@@ -29,6 +29,8 @@ struct JobDetailView: View {
                 }
             }
         }
+        .listStyle(.insetGrouped)
+        .appListAppearance()
         .navigationTitle(job.jobNumber)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
@@ -237,7 +239,11 @@ private struct DocumentationLinkLabel: View {
     let value: String
 
     var body: some View {
-        Label(title, systemImage: systemImage)
+        Label {
+            Text(title)
+        } icon: {
+            FeatureIcon(systemImage: systemImage, color: .blue)
+        }
         Spacer()
         Text(value)
             .foregroundStyle(.secondary)
@@ -288,23 +294,31 @@ struct JobRowView: View {
     let job: JobRecord
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(job.title)
-                    .font(.headline)
-                Spacer()
-                Text(job.status.title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Text(job.jobNumber)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Text(job.customer.name)
-                .font(.subheadline)
-            Text(job.plannedDate, format: .dateTime.day().month().year())
+        HStack(alignment: .top, spacing: 12) {
+            FeatureIcon(
+                systemImage: job.status == .completed ? "checkmark.circle.fill" : "hammer.fill",
+                color: AppTheme.statusColor(job.status)
+            )
+            VStack(alignment: .leading, spacing: 5) {
+                HStack {
+                    Text(job.title)
+                        .font(.headline)
+                    Spacer()
+                    StatusBadge(status: job.status)
+                }
+                Text(job.jobNumber)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.tint)
+                Text(job.customer.name)
+                    .font(.subheadline)
+                Label {
+                    Text(job.plannedDate, format: .dateTime.day().month().year())
+                } icon: {
+                    Image(systemName: "calendar")
+                }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            }
         }
     }
 }

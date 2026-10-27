@@ -37,13 +37,19 @@ struct CustomersView: View {
                                 contactPerson: customer.contactPerson,
                                 jobCount: customer.jobs.count
                             )
+                            .appCard()
                         }
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
                         .swipeActions {
                             Button("Delete", systemImage: "trash", role: .destructive) {
                                 requestDeletion(customer)
                             }
                         }
                     }
+                    .listStyle(.plain)
+                    .appListAppearance()
                 }
             }
             .navigationTitle("Customers")
@@ -140,21 +146,24 @@ private struct CustomerRowView: View {
     let jobCount: Int
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(name)
-                .font(.headline)
-            if let customerNumber, !customerNumber.isEmpty {
-                Text("Customer no. \(customerNumber)")
+        HStack(alignment: .top, spacing: 12) {
+            FeatureIcon(systemImage: "person.fill", color: .blue)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(name)
+                    .font(.headline)
+                if let customerNumber, !customerNumber.isEmpty {
+                    Text("Customer no. \(customerNumber)")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.tint)
+                }
+                if !contactPerson.isEmpty {
+                    Label(contactPerson, systemImage: "person.crop.circle")
+                        .foregroundStyle(.secondary)
+                }
+                Label("\(jobCount) jobs", systemImage: "hammer")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            if !contactPerson.isEmpty {
-                Text(contactPerson)
-                    .foregroundStyle(.secondary)
-            }
-            Text("\(jobCount) jobs")
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
     }
 }
