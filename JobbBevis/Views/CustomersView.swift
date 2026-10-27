@@ -15,6 +15,7 @@ struct CustomersView: View {
         return customers.filter {
             $0.name.localizedStandardContains(searchText)
                 || $0.contactPerson.localizedStandardContains(searchText)
+                || ($0.customerNumber?.localizedStandardContains(searchText) ?? false)
         }
     }
 
@@ -32,6 +33,7 @@ struct CustomersView: View {
                         } label: {
                             CustomerRowView(
                                 name: customer.name,
+                                customerNumber: customer.customerNumber,
                                 contactPerson: customer.contactPerson,
                                 jobCount: customer.jobs.count
                             )
@@ -133,6 +135,7 @@ private struct CustomerEmptyState: View {
 
 private struct CustomerRowView: View {
     let name: String
+    let customerNumber: String?
     let contactPerson: String
     let jobCount: Int
 
@@ -140,6 +143,11 @@ private struct CustomerRowView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(name)
                 .font(.headline)
+            if let customerNumber, !customerNumber.isEmpty {
+                Text("Customer no. \(customerNumber)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             if !contactPerson.isEmpty {
                 Text(contactPerson)
                     .foregroundStyle(.secondary)

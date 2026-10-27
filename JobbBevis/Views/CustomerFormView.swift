@@ -4,10 +4,12 @@ import SwiftUI
 struct CustomerFormView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @AppStorage(PreferenceKey.validatesNorwegianNumbers) private var validatesNorwegianNumbers = true
     let customer: Customer?
     let onSave: ((Customer) -> Void)?
 
     @State private var name: String
+    @State private var customerNumber: String
     @State private var contactPerson: String
     @State private var phone: String
     @State private var email: String
@@ -21,6 +23,7 @@ struct CustomerFormView: View {
         self.customer = customer
         self.onSave = onSave
         _name = State(initialValue: customer?.name ?? "")
+        _customerNumber = State(initialValue: customer?.customerNumber ?? "")
         _contactPerson = State(initialValue: customer?.contactPerson ?? "")
         _phone = State(initialValue: customer?.phone ?? "")
         _email = State(initialValue: customer?.email ?? "")
@@ -32,6 +35,8 @@ struct CustomerFormView: View {
         NavigationStack {
             Form {
                 Section("Customer") {
+                    TextField("Customer number", text: $customerNumber)
+                        .textInputAutocapitalization(.characters)
                     TextField("Name", text: $name)
                     if showNameError {
                         Text("Enter a customer name.")
@@ -80,14 +85,37 @@ struct CustomerFormView: View {
     }
 
     private func save() {
+        let trimmedCustomerNumber = customerNumber.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedOrganizationNumber = organizationNumber.trimmingCharacters(in: .whitespacesAndNewlines)
-        let validOrganizationNumber = trimmedOrganizationNumber.isEmpty
-            ? nil
-            : NorwegianNumberValidator.organizationNumberDigits(from: trimmedOrganizationNumber)
+        let validOrganizationNumber: String? = if trimmedOrganizationNumber.isEmpty {
+            nil
+        } else if validatesNorwegianNumbers {
+            NorwegianNumberValidator.organizationNumberDigits(from: trimmedOrganizationNumber)
+        } else {
+            trimmedOrganizationNumber
+        }
         showNameError = trimmedName.isEmpty
         showOrganizationNumberError = !trimmedOrganizationNumber.isEmpty && validOrganizationNumber == nil
         guard !trimmedName.isEmpty, !showOrganizationNumberError else { return }
+
+        do {
+            let resolvedNumber = trimmedCustomerNumber.isEmpty
+                ? try BusinessNumberService.nextCustomerNumber(in: modelContext)
+                : trimmedCustomerNumber
+            guard try BusinessNumberService.isCustomerNumberAvailable(
+                resolvedNumber,
+                excluding: customer?.id,
+                in: modelContext
+            ) else {
+                errorMessage = String(localized: "The customer number is already in use.")
+                return
+            }
+            customerNumber = resolvedNumber
+        } catch {
+            errorMessage = String(localized: "The next customer number could not be created.")
+            return
+        }
 
         let savedCustomer: Customer
         if let customer {
@@ -98,6 +126,7 @@ struct CustomerFormView: View {
         }
 
         savedCustomer.name = trimmedName
+        savedCustomer.customerNumber = customerNumber
         savedCustomer.contactPerson = contactPerson.trimmingCharacters(in: .whitespacesAndNewlines)
         savedCustomer.phone = phone.trimmingCharacters(in: .whitespacesAndNewlines)
         savedCustomer.email = email.trimmingCharacters(in: .whitespacesAndNewlines)

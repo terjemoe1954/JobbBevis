@@ -11,6 +11,7 @@ enum PersistenceService {
             WorkEntry.self,
             MaterialEntry.self,
             PurchaseItem.self,
+            Supplier.self,
             ProductCatalogItem.self,
             InvoiceRecord.self,
             CreditNoteRecord.self,

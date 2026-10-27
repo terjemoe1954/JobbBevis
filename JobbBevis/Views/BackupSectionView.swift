@@ -25,20 +25,31 @@ struct BackupSectionView: View {
     @State private var message: BackupMessage?
 
     var body: some View {
-        Section("Backup") {
-            Button("Export backup", systemImage: "square.and.arrow.up", action: prepareExport)
-            Button("Restore backup", systemImage: "arrow.down.doc", action: { isImporting = true })
+        Group {
+            Section("Backup") {
+                Button("Export backup", systemImage: "square.and.arrow.up", action: prepareExport)
+                Button("Restore backup", systemImage: "arrow.down.doc", action: { isImporting = true })
 
-            if isReadingBackup {
-                HStack {
-                    ProgressView()
-                    Text("Reading backup…")
+                if isReadingBackup {
+                    HStack {
+                        ProgressView()
+                        Text("Reading backup…")
+                    }
                 }
+
+                Text("A backup contains customer information and images. Store it safely. The file is not encrypted.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
 
-            Text("A backup contains customer information and images. Store it safely. The file is not encrypted.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            if let restoreCandidate {
+                RestoreConfirmationSection(
+                    summary: restoreCandidate.prepared.summary,
+                    exportCurrent: prepareExportBeforeRestore,
+                    restore: { performRestore(restoreCandidate) },
+                    cancel: cancelRestore
+                )
+            }
         }
         .fileExporter(
             isPresented: $isExporting,
@@ -66,14 +77,6 @@ struct BackupSectionView: View {
         ) { result in
             handleImportResult(result.map { $0.first })
         }
-        .sheet(item: $restoreCandidate) { candidate in
-            RestoreConfirmationView(
-                summary: candidate.prepared.summary,
-                exportCurrent: prepareExportBeforeRestore,
-                restore: { performRestore(candidate) },
-                cancel: cancelRestore
-            )
-        }
         .alert(item: $message) { message in
             Alert(
                 title: Text(message.title),
@@ -85,7 +88,7 @@ struct BackupSectionView: View {
 
     private var defaultFilename: String {
         let date = Date.now.formatted(.iso8601.year().month().day().dateSeparator(.dash))
-        return "JobbBevis-Backup-\(date).jobbveisbackup"
+        return "JobbBevis-Backup-\(date)"
     }
 
     private func prepareExport() {
@@ -117,37 +120,27 @@ struct BackupSectionView: View {
         switch result {
         case .success(let url?):
             let didAccess = url.startAccessingSecurityScopedResource()
-            Task {
-                await prepareImportedBackup(from: url, didAccess: didAccess)
+            isReadingBackup = true
+            defer {
+                isReadingBackup = false
+                if didAccess {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+
+            do {
+                // File providers may vend a temporary URL that is only guaranteed to
+                // remain valid while handling the import result. Read it before this
+                // callback returns, then work exclusively with the in-memory copy.
+                let data = try readImportedData(from: url)
+                let prepared = try BackupService().prepareImport(data: data)
+                restoreCandidate = RestoreCandidate(prepared: prepared)
+            } catch {
+                showImportError(error)
             }
         case .success(nil):
             showImportError(BackupError.invalidFormat)
         case .failure(let error):
-            showImportError(error)
-        }
-    }
-
-    private func prepareImportedBackup(from url: URL, didAccess: Bool) async {
-        isReadingBackup = true
-        defer {
-            isReadingBackup = false
-            if didAccess {
-                url.stopAccessingSecurityScopedResource()
-            }
-        }
-        do {
-            let values = try? url.resourceValues(forKeys: [.isUbiquitousItemKey])
-            if values?.isUbiquitousItem == true {
-                try FileManager.default.startDownloadingUbiquitousItem(at: url)
-            }
-            for _ in 0..<30 where !FileManager.default.fileExists(atPath: url.path()) {
-                try await Task.sleep(for: .milliseconds(100))
-            }
-            let data = try readImportedData(from: url)
-            let prepared = try BackupService().prepareImport(data: data)
-            try await Task.sleep(for: .milliseconds(400))
-            restoreCandidate = RestoreCandidate(prepared: prepared)
-        } catch {
             showImportError(error)
         }
     }
@@ -202,12 +195,13 @@ struct BackupSectionView: View {
             error: &coordinationError
         ) { coordinatedURL in
             readResult = Result {
-                let attributes = try FileManager.default.attributesOfItem(atPath: coordinatedURL.path())
-                if let size = attributes[.size] as? NSNumber,
-                   size.intValue > BackupService.maximumArchiveBytes {
+                // Some document providers expose a readable file representation
+                // without supporting path-based FileManager metadata queries.
+                let data = try Data(contentsOf: coordinatedURL)
+                if data.count > BackupService.maximumArchiveBytes {
                     throw BackupError.archiveTooLarge
                 }
-                return try Data(contentsOf: coordinatedURL)
+                return data
             }
         }
         if let coordinationError {
@@ -231,7 +225,7 @@ private struct BackupMessage: Identifiable {
     let text: String
 }
 
-private struct RestoreConfirmationView: View {
+private struct RestoreConfirmationSection: View {
     @Environment(\.locale) private var locale
     @State private var isRestoring = false
     let summary: BackupSummary
@@ -240,49 +234,35 @@ private struct RestoreConfirmationView: View {
     let cancel: () -> Void
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Backup contents") {
-                    LabeledContent("Customers", value: summary.customers.formatted())
-                    LabeledContent("Jobs", value: summary.jobs.formatted())
-                    LabeledContent("Photos", value: summary.photos.formatted())
-                    LabeledContent("Work entries", value: summary.workEntries.formatted())
-                    LabeledContent("Materials", value: summary.materials.formatted())
-                    LabeledContent(
-                        "Created",
-                        value: summary.createdAt.formatted(
-                            .dateTime.day().month(.abbreviated).year().hour().minute().locale(locale)
-                        )
-                    )
-                }
+        Section("Restore backup") {
+            LabeledContent("Customers", value: summary.customers.formatted())
+            LabeledContent("Jobs", value: summary.jobs.formatted())
+            LabeledContent("Photos", value: summary.photos.formatted())
+            LabeledContent("Work entries", value: summary.workEntries.formatted())
+            LabeledContent("Materials", value: summary.materials.formatted())
+            LabeledContent(
+                "Created",
+                value: summary.createdAt.formatted(
+                    .dateTime.day().month(.abbreviated).year().hour().minute().locale(locale)
+                )
+            )
 
-                Section {
-                    Text("Restoring uses full replacement. All current customers, jobs, work entries, materials, company information, logo, and images will be replaced.")
-                        .foregroundStyle(.secondary)
-                }
+            Text("Restoring uses full replacement. All current customers, jobs, work entries, materials, company information, logo, and images will be replaced.")
+                .foregroundStyle(.secondary)
 
-                Section {
-                    Button("Export current data first", systemImage: "square.and.arrow.up", action: exportCurrent)
+            Button("Export current data first", systemImage: "square.and.arrow.up", action: exportCurrent)
+            Button(role: .destructive, action: beginRestore) {
+                if isRestoring {
+                    ProgressView()
+                } else {
+                    Text("Replace current data")
                 }
             }
-            .navigationTitle("Restore backup")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", action: cancel)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(role: .destructive, action: beginRestore) {
-                        if isRestoring {
-                            ProgressView()
-                        } else {
-                            Text("Replace current data")
-                        }
-                    }
-                    .disabled(isRestoring)
-                }
-            }
+            .disabled(isRestoring)
+
+            Button("Cancel", role: .cancel, action: cancel)
+                .disabled(isRestoring)
         }
-        .interactiveDismissDisabled()
     }
 
     private func beginRestore() {

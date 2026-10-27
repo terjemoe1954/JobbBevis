@@ -46,13 +46,15 @@ enum SalesDocumentService {
         guard !companyName.isEmpty, !organizationNumber.isEmpty, !companyAddress.isEmpty else {
             throw SalesDocumentError.missingCompanyInformation
         }
-        guard NorwegianNumberValidator.organizationNumberDigits(from: organizationNumber) != nil else {
+        guard !NumberValidationPreference.isEnabled
+                || NorwegianNumberValidator.organizationNumberDigits(from: organizationNumber) != nil else {
             throw SalesDocumentError.invalidOrganizationNumber
         }
         let customerAddress = job.customer.address.trimmingCharacters(in: .whitespacesAndNewlines)
         let customerOrganizationNumber = (job.customer.organizationNumber ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        if !customerOrganizationNumber.isEmpty,
+        if NumberValidationPreference.isEnabled,
+           !customerOrganizationNumber.isEmpty,
            NorwegianNumberValidator.organizationNumberDigits(from: customerOrganizationNumber) == nil {
             throw SalesDocumentError.invalidOrganizationNumber
         }
@@ -133,7 +135,8 @@ enum SalesDocumentService {
         guard !bankAccount.isEmpty else {
             throw SalesDocumentError.missingBankAccount
         }
-        guard NorwegianNumberValidator.bankAccountDigits(from: bankAccount) != nil else {
+        guard !NumberValidationPreference.isEnabled
+                || NorwegianNumberValidator.bankAccountDigits(from: bankAccount) != nil else {
             throw SalesDocumentError.invalidBankAccount
         }
         let snapshot = try snapshot(job: job, company: company)

@@ -7,8 +7,10 @@ struct SettingsView: View {
     @Query private var profiles: [CompanyProfile]
     @AppStorage(PreferenceKey.language) private var languageRawValue = AppLanguage.system.rawValue
     @AppStorage(PreferenceKey.appearance) private var appearanceRawValue = AppAppearance.system.rawValue
+    @AppStorage(PreferenceKey.validatesNorwegianNumbers) private var validatesNorwegianNumbers = true
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var errorMessage: String?
+    @State private var isConfirmingDeleteAllData = false
 
     private var profile: CompanyProfile? {
         profiles.first
@@ -19,6 +21,7 @@ struct SettingsView: View {
             CompanyProfileSection(
                 profile: profile,
                 selectedPhoto: $selectedPhoto,
+                validatesNorwegianNumbers: validatesNorwegianNumbers,
                 save: saveProfile,
                 removeLogo: removeLogo
             )
@@ -28,6 +31,11 @@ struct SettingsView: View {
                     ProductCatalogView()
                 } label: {
                     Label("Product catalog", systemImage: "shippingbox.fill")
+                }
+                NavigationLink {
+                    SuppliersView()
+                } label: {
+                    Label("Suppliers", systemImage: "truck.box.fill")
                 }
             }
 
@@ -45,7 +53,19 @@ struct SettingsView: View {
                 }
             }
 
+            NumberValidationSettingsSection(isEnabled: $validatesNorwegianNumbers)
+
             BackupSectionView()
+
+            Section {
+                Button("Delete all data", systemImage: "trash", role: .destructive) {
+                    isConfirmingDeleteAllData = true
+                }
+            } header: {
+                Text("Data")
+            } footer: {
+                Text("Deletes all company information, customers, jobs, products, suppliers, images, documents, and app settings from this device.")
+            }
 
             Section("Help") {
                 NavigationLink {
@@ -70,6 +90,16 @@ struct SettingsView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(errorMessage ?? "")
+        }
+        .confirmationDialog(
+            "Delete all data?",
+            isPresented: $isConfirmingDeleteAllData,
+            titleVisibility: .visible
+        ) {
+            Button("Delete all data", role: .destructive, action: deleteAllData)
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This cannot be undone. Export a backup first if you want to keep the data.")
         }
     }
 
@@ -146,12 +176,26 @@ struct SettingsView: View {
         }
     }
 
+    private func deleteAllData() {
+        do {
+            try DataResetService.deleteAll(in: modelContext)
+            languageRawValue = AppLanguage.system.rawValue
+            appearanceRawValue = AppAppearance.system.rawValue
+            validatesNorwegianNumbers = true
+            modelContext.insert(CompanyProfile())
+            try modelContext.save()
+        } catch {
+            errorMessage = String(localized: "All data could not be deleted. \(error.localizedDescription)")
+        }
+    }
+
 }
 
 private struct CompanyProfileSection: View {
     @Environment(\.locale) private var locale
     let profile: CompanyProfile?
     @Binding var selectedPhoto: PhotosPickerItem?
+    let validatesNorwegianNumbers: Bool
     let save: () -> Void
     let removeLogo: () -> Void
     @State private var hourlyRateText = ""
@@ -264,22 +308,26 @@ private struct CompanyProfileSection: View {
     private func saveCompanyProfile(_ profile: CompanyProfile) {
         let trimmedOrganizationNumber = organizationNumber.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedBankAccount = bankAccount.trimmingCharacters(in: .whitespacesAndNewlines)
-        let validOrganizationNumber = NorwegianNumberValidator.organizationNumberDigits(
-            from: trimmedOrganizationNumber
-        )
-        let validBankAccount = trimmedBankAccount.isEmpty
-            ? nil
-            : NorwegianNumberValidator.bankAccountDigits(from: trimmedBankAccount)
+        let validOrganizationNumber = validatesNorwegianNumbers
+            ? NorwegianNumberValidator.organizationNumberDigits(from: trimmedOrganizationNumber)
+            : (trimmedOrganizationNumber.isEmpty ? nil : trimmedOrganizationNumber)
+        let validBankAccount: String? = if trimmedBankAccount.isEmpty {
+            nil
+        } else if validatesNorwegianNumbers {
+            NorwegianNumberValidator.bankAccountDigits(from: trimmedBankAccount)
+        } else {
+            trimmedBankAccount
+        }
 
         showsOrganizationNumberError = validOrganizationNumber == nil
         showsBankAccountError = !trimmedBankAccount.isEmpty && validBankAccount == nil
         guard let validOrganizationNumber, !showsBankAccountError else { return }
 
         profile.organizationNumber = validOrganizationNumber
-        if let validBankAccount {
+        if let validBankAccount, validatesNorwegianNumbers {
             profile.bankAccount = NorwegianNumberValidator.formattedBankAccount(validBankAccount)
         } else {
-            profile.bankAccount = nil
+            profile.bankAccount = validBankAccount
         }
         organizationNumber = validOrganizationNumber
         bankAccount = profile.bankAccount ?? ""
@@ -292,6 +340,19 @@ private struct CompanyProfileSection: View {
               let value = EntryFormatting.parseDecimal(trimmed, locale: locale),
               value >= 0 else { return nil }
         return value
+    }
+}
+
+private struct NumberValidationSettingsSection: View {
+    @Binding var isEnabled: Bool
+
+    var body: some View {
+        Section("Testing") {
+            Toggle("Validate organization and bank account numbers", isOn: $isEnabled)
+            Text("Turn this off to save test numbers without validating Norwegian check digits.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 

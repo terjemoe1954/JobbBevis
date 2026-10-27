@@ -84,9 +84,22 @@ private struct ProductCatalogRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(product.name).font(.headline)
-            Text(product.supplier).foregroundStyle(.secondary)
-            Text("Unit price: \(PriceEstimateCalculator.currency(product.unitPrice, locale: locale)) / \(product.unit)")
-                .font(.subheadline)
+            if let itemNumber = product.itemNumber, !itemNumber.isEmpty {
+                Text("Item no. \(itemNumber)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Text(product.supplierRecord?.name ?? product.supplier).foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                Text("Unit price: \(PriceEstimateCalculator.currency(product.unitPrice, locale: locale))")
+                Text("/")
+                if let unit = MaterialUnit(rawValue: product.unit) {
+                    Text(unit.abbreviation)
+                } else {
+                    Text(product.unit)
+                }
+            }
+            .font(.subheadline)
         }
         .contentShape(Rectangle())
     }
@@ -96,16 +109,20 @@ struct ProductCatalogItemFormView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
+    @Query(sort: \Supplier.name) private var suppliers: [Supplier]
     let product: ProductCatalogItem?
-    @State private var supplier: String
+    @State private var itemNumber: String
+    @State private var selectedSupplierID: UUID?
     @State private var name: String
     @State private var unit: String
     @State private var priceText: String
+    @State private var isAddingSupplier = false
     @State private var errorMessage: String?
 
     init(product: ProductCatalogItem? = nil) {
         self.product = product
-        _supplier = State(initialValue: product?.supplier ?? "")
+        _itemNumber = State(initialValue: product?.itemNumber ?? "")
+        _selectedSupplierID = State(initialValue: product?.supplierRecord?.id)
         _name = State(initialValue: product?.name ?? "")
         _unit = State(initialValue: product?.unit ?? MaterialUnit.pieces.rawValue)
         _priceText = State(initialValue: product.map { String(describing: $0.unitPrice) } ?? "")
@@ -115,9 +132,24 @@ struct ProductCatalogItemFormView: View {
         NavigationStack {
             Form {
                 Section("Product") {
-                    TextField("Supplier", text: $supplier)
+                    TextField("Item number", text: $itemNumber)
+                        .textInputAutocapitalization(.characters)
+                    Picker("Supplier", selection: $selectedSupplierID) {
+                        Text("Choose supplier").tag(UUID?.none)
+                        ForEach(suppliers) { supplier in
+                            Text("\(supplier.supplierNumber) – \(supplier.name)")
+                                .tag(Optional(supplier.id))
+                        }
+                    }
+                    Button("New supplier", systemImage: "plus") {
+                        isAddingSupplier = true
+                    }
                     TextField("Name", text: $name)
-                    TextField("Unit", text: $unit)
+                    Picker("Unit", selection: $unit) {
+                        ForEach(MaterialUnit.allCases) { unit in
+                            Text(unit.title).tag(unit.rawValue)
+                        }
+                    }
                     TextField("Unit price, excluding VAT", text: $priceText)
                         .keyboardType(.decimalPad)
                 }
@@ -137,6 +169,11 @@ struct ProductCatalogItemFormView: View {
             } message: {
                 Text(errorMessage ?? "")
             }
+            .sheet(isPresented: $isAddingSupplier) {
+                SupplierFormView { supplier in
+                    selectedSupplierID = supplier.id
+                }
+            }
         }
     }
 
@@ -145,22 +182,42 @@ struct ProductCatalogItemFormView: View {
     }
 
     private func save() {
-        let supplier = supplier.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedItemNumber = itemNumber.trimmingCharacters(in: .whitespacesAndNewlines)
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let unit = unit.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !supplier.isEmpty, !name.isEmpty, !unit.isEmpty,
+        guard let supplier = suppliers.first(where: { $0.id == selectedSupplierID }),
+              !name.isEmpty, !unit.isEmpty,
               let price = EntryFormatting.parseDecimal(priceText, locale: locale), price >= 0 else {
             errorMessage = String(localized: "Enter supplier, product, unit, and a valid non-negative price.")
             return
         }
-        let saved = product ?? ProductCatalogItem(supplier: supplier, name: name, unit: unit, unitPrice: price)
-        if product == nil { modelContext.insert(saved) }
-        saved.supplier = supplier
-        saved.name = name
-        saved.unit = unit
-        saved.unitPrice = price
-        saved.updatedAt = .now
         do {
+            let resolvedNumber = trimmedItemNumber.isEmpty
+                ? try BusinessNumberService.nextItemNumber(in: modelContext)
+                : trimmedItemNumber
+            guard try BusinessNumberService.isItemNumberAvailable(
+                resolvedNumber,
+                excluding: product?.id,
+                in: modelContext
+            ) else {
+                errorMessage = String(localized: "The item number is already in use.")
+                return
+            }
+            let saved = product ?? ProductCatalogItem(
+                itemNumber: resolvedNumber,
+                supplier: supplier.name,
+                supplierRecord: supplier,
+                name: name,
+                unit: unit,
+                unitPrice: price
+            )
+            if product == nil { modelContext.insert(saved) }
+            saved.itemNumber = resolvedNumber
+            saved.supplier = supplier.name
+            saved.supplierRecord = supplier
+            saved.name = name
+            saved.unit = unit
+            saved.unitPrice = price
+            saved.updatedAt = .now
             try modelContext.save()
             dismiss()
         } catch {

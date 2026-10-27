@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 enum AppSection: Hashable {
@@ -6,10 +7,12 @@ enum AppSection: Hashable {
     case invoices
     case accounting
     case products
+    case suppliers
     case settings
 }
 
 struct AppRootView: View {
+    @Environment(\.modelContext) private var modelContext
     @AppStorage(PreferenceKey.language) private var languageRawValue = AppLanguage.system.rawValue
     @AppStorage(PreferenceKey.appearance) private var appearanceRawValue = AppAppearance.system.rawValue
     @State private var selection: AppSection? = .jobs
@@ -40,6 +43,9 @@ struct AppRootView: View {
                 NavigationLink(value: AppSection.products) {
                     Label("Product catalog", systemImage: "shippingbox")
                 }
+                NavigationLink(value: AppSection.suppliers) {
+                    Label("Suppliers", systemImage: "truck.box")
+                }
                 NavigationLink(value: AppSection.settings) {
                     Label("Settings", systemImage: "gearshape")
                 }
@@ -57,11 +63,16 @@ struct AppRootView: View {
                 AccountingTransferView()
             case .products:
                 NavigationStack { ProductCatalogView() }
+            case .suppliers:
+                NavigationStack { SuppliersView() }
             case .settings:
                 SettingsView()
             }
         }
         .preferredColorScheme(appearance.colorScheme)
         .environment(\.locale, language.locale ?? .autoupdatingCurrent)
+        .task {
+            try? DataMigrationService.migrateLegacyCatalogData(in: modelContext)
+        }
     }
 }

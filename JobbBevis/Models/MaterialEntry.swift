@@ -3,24 +3,45 @@ import SwiftData
 
 enum MaterialUnit: String, CaseIterable, Identifiable {
     case pieces = "pcs"
+    case millimeter = "mm"
+    case centimeter = "cm"
     case meter = "m"
     case squareMeter = "m²"
     case cubicMeter = "m³"
     case liter = "l"
     case kilogram = "kg"
+    case hour = "h"
     case package
 
     var id: String { rawValue }
 
     var title: LocalizedStringResource {
         switch self {
+        case .pieces: "Pieces"
+        case .millimeter: "Millimeter"
+        case .centimeter: "Centimeter"
+        case .meter: "Meter"
+        case .squareMeter: "Square meter"
+        case .cubicMeter: "Cubic meter"
+        case .liter: "Liter"
+        case .kilogram: "Kilogram"
+        case .hour: "Hour"
+        case .package: "Package"
+        }
+    }
+
+    var abbreviation: LocalizedStringResource {
+        switch self {
         case .pieces: "pcs"
+        case .millimeter: "mm"
+        case .centimeter: "cm"
         case .meter: "m"
         case .squareMeter: "m²"
         case .cubicMeter: "m³"
         case .liter: "l"
         case .kilogram: "kg"
-        case .package: "package"
+        case .hour: "h"
+        case .package: "pkg"
         }
     }
 }

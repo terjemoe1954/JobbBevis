@@ -95,12 +95,15 @@ struct PDFReportService {
             func localizedUnit(_ unit: MaterialUnit) -> String {
                 switch unit {
                 case .pieces: localized("pcs")
+                case .millimeter: localized("mm")
+                case .centimeter: localized("cm")
                 case .meter: localized("m")
                 case .squareMeter: localized("m²")
                 case .cubicMeter: localized("m³")
                 case .liter: localized("l")
                 case .kilogram: localized("kg")
-                case .package: localized("package")
+                case .hour: localized("h")
+                case .package: localized("pkg")
                 }
             }
 

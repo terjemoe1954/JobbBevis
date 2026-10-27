@@ -7,6 +7,7 @@ struct CustomerDetailView: View {
     var body: some View {
         List {
             CustomerContactSection(
+                customerNumber: customer.customerNumber,
                 contactPerson: customer.contactPerson,
                 phone: customer.phone,
                 email: customer.email,
@@ -41,6 +42,7 @@ struct CustomerDetailView: View {
 }
 
 private struct CustomerContactSection: View {
+    let customerNumber: String?
     let contactPerson: String
     let phone: String
     let email: String
@@ -48,6 +50,9 @@ private struct CustomerContactSection: View {
 
     var body: some View {
         Section("Contact details") {
+            if let customerNumber, !customerNumber.isEmpty {
+                LabeledContent("Customer number", value: customerNumber)
+            }
             if !contactPerson.isEmpty {
                 LabeledContent("Contact person", value: contactPerson)
             }

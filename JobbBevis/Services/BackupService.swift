@@ -34,6 +34,7 @@ struct BackupService {
         let materials = try context.fetch(FetchDescriptor<MaterialEntry>())
         let purchaseItems = try context.fetch(FetchDescriptor<PurchaseItem>())
         let products = try context.fetch(FetchDescriptor<ProductCatalogItem>())
+        let suppliers = try context.fetch(FetchDescriptor<Supplier>())
         let invoices = try context.fetch(FetchDescriptor<InvoiceRecord>())
         let creditNotes = try context.fetch(FetchDescriptor<CreditNoteRecord>())
         let metadata = try context.fetch(FetchDescriptor<AppMetadata>())
@@ -110,6 +111,7 @@ struct BackupService {
             customers: customers.map {
                 CustomerRecord(
                     id: $0.id,
+                    customerNumber: $0.customerNumber,
                     name: $0.name,
                     contactPerson: $0.contactPerson,
                     phone: $0.phone,
@@ -185,8 +187,14 @@ struct BackupService {
                 )
             },
             products: products.map {
-                ProductRecord(id: $0.id, supplier: $0.supplier, name: $0.name, unit: $0.unit,
+                ProductRecord(id: $0.id, itemNumber: $0.itemNumber, supplier: $0.supplier,
+                              supplierID: $0.supplierRecord?.id, name: $0.name, unit: $0.unit,
                               unitPrice: $0.unitPrice, createdAt: $0.createdAt, updatedAt: $0.updatedAt)
+            },
+            suppliers: suppliers.map {
+                SupplierRecord(id: $0.id, supplierNumber: $0.supplierNumber, name: $0.name,
+                               contactPerson: $0.contactPerson, phone: $0.phone, email: $0.email,
+                               address: $0.address, createdAt: $0.createdAt, updatedAt: $0.updatedAt)
             },
             invoices: invoices.map {
                 InvoiceBackupRecord(id: $0.id, invoiceNumber: $0.invoiceNumber, jobID: $0.jobID,
@@ -324,6 +332,7 @@ struct BackupService {
         let totalRecords = archive.companies.count + archive.customers.count + archive.jobs.count
             + archive.photos.count + archive.workEntries.count + archive.materials.count
             + (archive.purchaseItems?.count ?? 0) + (archive.products?.count ?? 0)
+            + (archive.suppliers?.count ?? 0)
             + (archive.invoices?.count ?? 0) + archive.metadata.count
             + (archive.creditNotes?.count ?? 0)
         guard totalRecords <= Self.maximumRecords, archive.files.count <= Self.maximumFiles else {
@@ -339,6 +348,10 @@ struct BackupService {
         try requireUnique(archive.materials.map(\.id))
         try requireUnique((archive.purchaseItems ?? []).map(\.id))
         try requireUnique((archive.products ?? []).map(\.id))
+        try requireUnique((archive.products ?? []).compactMap(\.itemNumber))
+        try requireUnique((archive.suppliers ?? []).map(\.id))
+        try requireUnique((archive.suppliers ?? []).map(\.supplierNumber))
+        try requireUnique(archive.customers.compactMap(\.customerNumber))
         try requireUnique((archive.invoices ?? []).map(\.id))
         try requireUnique((archive.invoices ?? []).map(\.invoiceNumber))
         try requireUnique((archive.creditNotes ?? []).map(\.id))
@@ -351,6 +364,7 @@ struct BackupService {
         let customerIDs = Set(archive.customers.map(\.id))
         let jobIDs = Set(archive.jobs.map(\.id))
         let invoiceIDs = Set((archive.invoices ?? []).map(\.id))
+        let supplierIDs = Set((archive.suppliers ?? []).map(\.id))
         let fileIDs = Set(archive.files.map(\.id))
         guard archive.jobs.allSatisfy({ customerIDs.contains($0.customerID) }),
               archive.photos.allSatisfy({ jobIDs.contains($0.jobID) && fileIDs.contains($0.fileID) }),
@@ -365,6 +379,7 @@ struct BackupService {
               }),
               (archive.products ?? []).allSatisfy({
                   !$0.supplier.isEmpty && !$0.name.isEmpty && !$0.unit.isEmpty && $0.unitPrice >= 0
+                      && $0.supplierID.map { supplierIDs.contains($0) } != false
               }),
               (archive.invoices ?? []).allSatisfy({
                   !$0.invoiceNumber.isEmpty && !$0.jobNumber.isEmpty
@@ -490,6 +505,7 @@ struct BackupService {
             for model in try context.fetch(FetchDescriptor<MaterialEntry>()) { context.delete(model) }
             for model in try context.fetch(FetchDescriptor<PurchaseItem>()) { context.delete(model) }
             for model in try context.fetch(FetchDescriptor<ProductCatalogItem>()) { context.delete(model) }
+            for model in try context.fetch(FetchDescriptor<Supplier>()) { context.delete(model) }
             for model in try context.fetch(FetchDescriptor<JobRecord>()) { context.delete(model) }
             for model in try context.fetch(FetchDescriptor<Customer>()) { context.delete(model) }
             for model in try context.fetch(FetchDescriptor<CompanyProfile>()) { context.delete(model) }
@@ -499,6 +515,7 @@ struct BackupService {
             for record in archive.customers {
                 let customer = Customer(
                     id: record.id,
+                    customerNumber: record.customerNumber,
                     name: record.name,
                     contactPerson: record.contactPerson,
                     phone: record.phone,
@@ -605,9 +622,28 @@ struct BackupService {
                 ))
             }
 
+            var supplierByID: [UUID: Supplier] = [:]
+            for record in archive.suppliers ?? [] {
+                let supplier = Supplier(
+                    id: record.id,
+                    supplierNumber: record.supplierNumber,
+                    name: record.name,
+                    contactPerson: record.contactPerson,
+                    phone: record.phone,
+                    email: record.email,
+                    address: record.address,
+                    createdAt: record.createdAt,
+                    updatedAt: record.updatedAt
+                )
+                supplierByID[record.id] = supplier
+                context.insert(supplier)
+            }
+
             for record in archive.products ?? [] {
                 context.insert(ProductCatalogItem(
-                    id: record.id, supplier: record.supplier, name: record.name, unit: record.unit,
+                    id: record.id, itemNumber: record.itemNumber, supplier: record.supplier,
+                    supplierRecord: record.supplierID.flatMap { supplierByID[$0] },
+                    name: record.name, unit: record.unit,
                     unitPrice: record.unitPrice, createdAt: record.createdAt, updatedAt: record.updatedAt
                 ))
             }
@@ -779,6 +815,7 @@ private struct BackupArchive: Codable {
     let materials: [MaterialRecord]
     let purchaseItems: [PurchaseRecord]?
     let products: [ProductRecord]?
+    let suppliers: [SupplierRecord]?
     let invoices: [InvoiceBackupRecord]?
     let creditNotes: [CreditNoteBackupRecord]?
     let metadata: [MetadataRecord]
@@ -826,6 +863,7 @@ private struct CompanyRecord: Codable {
 
 private struct CustomerRecord: Codable {
     let id: UUID
+    let customerNumber: String?
     let name: String
     let contactPerson: String
     let phone: String
@@ -914,10 +952,24 @@ private struct MetadataRecord: Codable {
 
 private struct ProductRecord: Codable {
     let id: UUID
+    let itemNumber: String?
     let supplier: String
+    let supplierID: UUID?
     let name: String
     let unit: String
     let unitPrice: Decimal
+    let createdAt: Date
+    let updatedAt: Date
+}
+
+private struct SupplierRecord: Codable {
+    let id: UUID
+    let supplierNumber: String
+    let name: String
+    let contactPerson: String
+    let phone: String
+    let email: String
+    let address: String
     let createdAt: Date
     let updatedAt: Date
 }

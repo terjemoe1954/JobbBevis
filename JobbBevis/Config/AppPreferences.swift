@@ -47,4 +47,15 @@ enum AppAppearance: String, CaseIterable, Identifiable {
 enum PreferenceKey {
     static let language = "selectedLanguage"
     static let appearance = "selectedAppearance"
+    static let validatesNorwegianNumbers = "validatesNorwegianNumbers"
+}
+
+enum NumberValidationPreference {
+    static var isEnabled: Bool {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: PreferenceKey.validatesNorwegianNumbers) != nil else {
+            return true
+        }
+        return defaults.bool(forKey: PreferenceKey.validatesNorwegianNumbers)
+    }
 }

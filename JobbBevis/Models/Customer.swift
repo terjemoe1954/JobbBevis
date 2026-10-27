@@ -4,6 +4,7 @@ import SwiftData
 @Model
 final class Customer {
     var id: UUID
+    var customerNumber: String?
     var name: String
     var contactPerson: String
     var phone: String
@@ -23,6 +24,7 @@ final class Customer {
 
     init(
         id: UUID = UUID(),
+        customerNumber: String? = nil,
         name: String,
         contactPerson: String = "",
         phone: String = "",
@@ -35,6 +37,7 @@ final class Customer {
         isSampleData: Bool = false
     ) {
         self.id = id
+        self.customerNumber = customerNumber
         self.name = name
         self.contactPerson = contactPerson
         self.phone = phone

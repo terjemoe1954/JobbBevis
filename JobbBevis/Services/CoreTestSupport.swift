@@ -58,7 +58,9 @@ public enum CoreTestSupport {
 
     public static func backupRoundTripPreservesData() throws -> Bool {
         let source = try makeContext()
-        let customer = Customer(name: "Example", address: "Customer Road 1", isSampleData: true)
+        let customer = Customer(
+            customerNumber: "K-0001", name: "Example", address: "Customer Road 1", isSampleData: true
+        )
         let company = CompanyProfile(
             name: "Company", organizationNumber: "123456785", address: "Company Road 2",
             bankAccount: "1234.45.68454", isVATRegistered: true,
@@ -91,8 +93,11 @@ public enum CoreTestSupport {
         source.insert(company)
         source.insert(customer)
         source.insert(job)
+        let supplier = Supplier(supplierNumber: "L-0001", name: "Catalog Supplier")
+        source.insert(supplier)
         source.insert(ProductCatalogItem(
-            supplier: "Catalog Supplier", name: "Catalog Product", unit: "pcs", unitPrice: 299
+            itemNumber: "V-0001", supplier: supplier.name, supplierRecord: supplier,
+            name: "Catalog Product", unit: "pcs", unitPrice: 299
         ))
         try source.save()
         _ = try SalesDocumentService.issueInvoice(
@@ -115,6 +120,7 @@ public enum CoreTestSupport {
         return prepared.summary.customers == 1
             && prepared.summary.jobs == 1
             && restored.customer.name == "Example"
+            && restored.customer.customerNumber == "K-0001"
             && restored.isSampleData
             && restored.customer.isSampleData
             && restored.estimatedHours == 4
@@ -126,6 +132,8 @@ public enum CoreTestSupport {
             && restored.materialEntries.first?.unitPrice == 100
             && restored.purchaseItems.first?.lineTotal == 250
             && restoredProduct?.name == "Catalog Product"
+            && restoredProduct?.itemNumber == "V-0001"
+            && restoredProduct?.supplierRecord?.supplierNumber == "L-0001"
             && restoredInvoice?.snapshot?.customerName == "Example"
             && restoredInvoice?.invoiceNumber.hasSuffix("00001") == true
             && restoredCompany?.defaultHourlyRate == 875
@@ -224,6 +232,7 @@ public enum CoreTestSupport {
             WorkEntry.self,
             MaterialEntry.self,
             PurchaseItem.self,
+            Supplier.self,
             ProductCatalogItem.self,
             InvoiceRecord.self,
             CreditNoteRecord.self,

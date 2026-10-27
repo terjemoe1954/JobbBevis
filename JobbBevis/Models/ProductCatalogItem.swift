@@ -4,7 +4,9 @@ import SwiftData
 @Model
 final class ProductCatalogItem {
     @Attribute(.unique) var id: UUID
+    var itemNumber: String?
     var supplier: String
+    var supplierRecord: Supplier?
     var name: String
     var unit: String
     var unitPrice: Decimal
@@ -13,7 +15,9 @@ final class ProductCatalogItem {
 
     init(
         id: UUID = UUID(),
+        itemNumber: String? = nil,
         supplier: String,
+        supplierRecord: Supplier? = nil,
         name: String,
         unit: String,
         unitPrice: Decimal,
@@ -21,7 +25,9 @@ final class ProductCatalogItem {
         updatedAt: Date = .now
     ) {
         self.id = id
+        self.itemNumber = itemNumber
         self.supplier = supplier
+        self.supplierRecord = supplierRecord
         self.name = name
         self.unit = unit
         self.unitPrice = unitPrice
