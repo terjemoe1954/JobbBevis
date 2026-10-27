@@ -5,7 +5,7 @@ struct MaterialEntryFormView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
-    @Query(sort: [SortDescriptor(\ProductCatalogItem.supplier), SortDescriptor(\ProductCatalogItem.name)])
+    @Query(sort: [SortDescriptor(\ProductCatalogItem.itemNumber), SortDescriptor(\ProductCatalogItem.name)])
     private var products: [ProductCatalogItem]
     let job: JobRecord
     let entry: MaterialEntry?
@@ -41,7 +41,7 @@ struct MaterialEntryFormView: View {
                     if entry == nil, !products.isEmpty {
                         Menu("Copy from product catalog", systemImage: "shippingbox.fill") {
                             ForEach(products) { product in
-                                Button("\(product.supplier) – \(product.name)") {
+                                Button(productSelectionTitle(for: product)) {
                                     apply(product)
                                 }
                             }
@@ -177,5 +177,10 @@ struct MaterialEntryFormView: View {
         selectedUnit = isPreset ? product.unit : "custom"
         customUnit = isPreset ? "" : product.unit
         unitPriceText = EntryFormatting.formatDecimal(product.unitPrice, locale: locale)
+    }
+
+    private func productSelectionTitle(for product: ProductCatalogItem) -> String {
+        let number = product.itemNumber?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return number.isEmpty ? product.name : "\(number) – \(product.name)"
     }
 }

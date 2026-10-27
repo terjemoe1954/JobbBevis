@@ -15,6 +15,7 @@ struct JobFormView: View {
     @State private var details: String
     @State private var plannedDate: Date
     @State private var status: JobStatus
+    @State private var completedAt: Date
     @State private var estimatedHoursText: String
     @State private var hourlyRateText: String
     @State private var drivingKilometersText: String
@@ -35,6 +36,7 @@ struct JobFormView: View {
         _details = State(initialValue: job?.details ?? "")
         _plannedDate = State(initialValue: job?.plannedDate ?? .now)
         _status = State(initialValue: job?.status ?? .planned)
+        _completedAt = State(initialValue: job?.completedAt ?? .now)
         _estimatedHoursText = State(initialValue: job?.estimatedHours.map(String.init(describing:)) ?? "")
         _hourlyRateText = State(initialValue: job?.hourlyRate.map(String.init(describing:)) ?? "")
         _drivingKilometersText = State(initialValue: job?.drivingKilometers.map(String.init(describing:)) ?? "")
@@ -51,6 +53,7 @@ struct JobFormView: View {
                     selectedCustomerID: $selectedCustomerID,
                     plannedDate: $plannedDate,
                     status: $status,
+                    completedAt: $completedAt,
                     customers: customers,
                     showTitleError: showTitleError,
                     showCustomerError: showCustomerError,
@@ -150,6 +153,9 @@ struct JobFormView: View {
             savedJob.details = details.trimmingCharacters(in: .whitespacesAndNewlines)
             savedJob.plannedDate = plannedDate
             savedJob.status = status
+            if status == .completed {
+                savedJob.completedAt = completedAt
+            }
             savedJob.estimatedHours = estimatedHours
             savedJob.hourlyRate = hourlyRate
             savedJob.drivingKilometers = drivingKilometers
@@ -230,6 +236,7 @@ private struct JobBasicsSection: View {
     @Binding var selectedCustomerID: UUID?
     @Binding var plannedDate: Date
     @Binding var status: JobStatus
+    @Binding var completedAt: Date
     let customers: [Customer]
     let showTitleError: Bool
     let showCustomerError: Bool
@@ -262,6 +269,9 @@ private struct JobBasicsSection: View {
                 ForEach(JobStatus.allCases) { status in
                     Text(status.title).tag(status)
                 }
+            }
+            if status == .completed {
+                DatePicker("Completed date", selection: $completedAt, displayedComponents: .date)
             }
         }
     }

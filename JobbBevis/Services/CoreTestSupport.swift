@@ -56,6 +56,32 @@ public enum CoreTestSupport {
             && stored.purchaseItems.first?.supplier == "Supplier"
     }
 
+    public static func workAndMaterialEntriesCanBeDeleted() throws -> Bool {
+        let context = try makeContext()
+        let customer = Customer(name: "Delete test")
+        let job = JobRecord(jobNumber: "DELETE-1", title: "Delete test", customer: customer)
+        let workEntry = WorkEntry(workDate: .now, details: "Work", durationMinutes: 60, job: job)
+        let materialEntry = MaterialEntry(name: "Material", quantity: 1, unit: "pcs", job: job)
+        job.workEntries.append(workEntry)
+        job.materialEntries.append(materialEntry)
+        context.insert(customer)
+        context.insert(job)
+        try context.save()
+
+        job.workEntries.removeAll { $0.id == workEntry.id }
+        job.materialEntries.removeAll { $0.id == materialEntry.id }
+        context.delete(workEntry)
+        context.delete(materialEntry)
+        try context.save()
+
+        let storedWorkEntries = try context.fetch(FetchDescriptor<WorkEntry>())
+        let storedMaterialEntries = try context.fetch(FetchDescriptor<MaterialEntry>())
+        return job.workEntries.isEmpty
+            && job.materialEntries.isEmpty
+            && storedWorkEntries.isEmpty
+            && storedMaterialEntries.isEmpty
+    }
+
     public static func backupRoundTripPreservesData() throws -> Bool {
         let source = try makeContext()
         let customer = Customer(

@@ -240,7 +240,7 @@ struct SalesDocumentPDFService {
             }
             func money(_ value: Decimal) -> String { PriceEstimateCalculator.currency(value, locale: locale) }
             func localized(_ resource: String.LocalizationValue) -> String {
-                String(localized: resource, locale: locale)
+                String(localized: LocalizedStringResource(resource, locale: locale))
             }
             func localizedUnit(_ unit: MaterialUnit) -> String {
                 switch unit {

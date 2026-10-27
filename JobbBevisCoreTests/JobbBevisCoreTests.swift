@@ -22,4 +22,10 @@ struct JobbBevisCoreTests {
         #expect(try CoreTestSupport.accountingReportIsPDF())
     }
 
+    @Test("Work and material entries can be deleted from a job")
+    @MainActor
+    func deleteWorkAndMaterialEntries() throws {
+        #expect(try CoreTestSupport.workAndMaterialEntriesCanBeDeleted())
+    }
+
 }

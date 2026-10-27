@@ -16,7 +16,9 @@ struct AccountingReportPDFService {
         let margin: CGFloat = 36
         let renderer = UIGraphicsPDFRenderer(bounds: page)
         let money: (Decimal) -> String = { PriceEstimateCalculator.currency($0, locale: locale) }
-        let localized: (String.LocalizationValue) -> String = { String(localized: $0, locale: locale) }
+        let localized: (String.LocalizationValue) -> String = {
+            String(localized: LocalizedStringResource($0, locale: locale))
+        }
 
         return renderer.pdfData { context in
             var y: CGFloat = 0

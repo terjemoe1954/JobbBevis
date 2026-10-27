@@ -37,6 +37,7 @@ struct WorkEntriesView: View {
                                 }
                             }
                         }
+                        .onDelete(perform: requestDeletion)
                     } footer: {
                         Text("Total time: \(EntryFormatting.duration(totalMinutes: totalMinutes))")
                     }
@@ -45,8 +46,13 @@ struct WorkEntriesView: View {
         }
         .navigationTitle("Work log")
         .toolbar {
-            Button("Add work entry", systemImage: "plus") {
-                isAddingEntry = true
+            ToolbarItemGroup(placement: .primaryAction) {
+                if !orderedEntries.isEmpty {
+                    EditButton()
+                }
+                Button("Add work entry", systemImage: "plus") {
+                    isAddingEntry = true
+                }
             }
         }
         .sheet(isPresented: $isAddingEntry) {
@@ -88,6 +94,7 @@ struct WorkEntriesView: View {
 
     private func deletePendingEntry() {
         guard let entryPendingDeletion else { return }
+        job.workEntries.removeAll { $0.id == entryPendingDeletion.id }
         modelContext.delete(entryPendingDeletion)
         job.updatedAt = .now
         do {
@@ -97,6 +104,11 @@ struct WorkEntriesView: View {
             modelContext.rollback()
             errorMessage = String(localized: "The work entry could not be deleted. Try again.")
         }
+    }
+
+    private func requestDeletion(at offsets: IndexSet) {
+        guard let index = offsets.first, orderedEntries.indices.contains(index) else { return }
+        entryPendingDeletion = orderedEntries[index]
     }
 }
 

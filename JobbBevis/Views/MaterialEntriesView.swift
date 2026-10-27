@@ -21,25 +21,33 @@ struct MaterialEntriesView: View {
             if orderedEntries.isEmpty {
                 MaterialEmptyState(addEntry: { isAddingEntry = true })
             } else {
-                List(orderedEntries) { entry in
-                    Button {
-                        selectedEntry = entry
-                    } label: {
-                        MaterialEntryRow(entry: entry, locale: locale)
-                    }
-                    .buttonStyle(.plain)
-                    .swipeActions {
-                        Button("Delete", systemImage: "trash", role: .destructive) {
-                            entryPendingDeletion = entry
+                List {
+                    ForEach(orderedEntries) { entry in
+                        Button {
+                            selectedEntry = entry
+                        } label: {
+                            MaterialEntryRow(entry: entry, locale: locale)
+                        }
+                        .buttonStyle(.plain)
+                        .swipeActions {
+                            Button("Delete", systemImage: "trash", role: .destructive) {
+                                entryPendingDeletion = entry
+                            }
                         }
                     }
+                    .onDelete(perform: requestDeletion)
                 }
             }
         }
         .navigationTitle("Materials")
         .toolbar {
-            Button("Add material", systemImage: "plus") {
-                isAddingEntry = true
+            ToolbarItemGroup(placement: .primaryAction) {
+                if !orderedEntries.isEmpty {
+                    EditButton()
+                }
+                Button("Add material", systemImage: "plus") {
+                    isAddingEntry = true
+                }
             }
         }
         .sheet(isPresented: $isAddingEntry) {
@@ -81,6 +89,7 @@ struct MaterialEntriesView: View {
 
     private func deletePendingEntry() {
         guard let entryPendingDeletion else { return }
+        job.materialEntries.removeAll { $0.id == entryPendingDeletion.id }
         modelContext.delete(entryPendingDeletion)
         job.updatedAt = .now
         do {
@@ -90,6 +99,11 @@ struct MaterialEntriesView: View {
             modelContext.rollback()
             errorMessage = String(localized: "The material could not be deleted. Try again.")
         }
+    }
+
+    private func requestDeletion(at offsets: IndexSet) {
+        guard let index = offsets.first, orderedEntries.indices.contains(index) else { return }
+        entryPendingDeletion = orderedEntries[index]
     }
 }
 
