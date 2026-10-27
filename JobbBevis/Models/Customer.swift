@@ -4,7 +4,7 @@ import SwiftData
 @Model
 final class Customer {
     var id: UUID
-    var customerNumber: String?
+    @Attribute(.unique) var customerNumber: String?
     var name: String
     var contactPerson: String
     var phone: String

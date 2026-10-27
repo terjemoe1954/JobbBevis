@@ -5,16 +5,21 @@ struct PurchaseItemFormView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: [SortDescriptor(\ProductCatalogItem.itemNumber), SortDescriptor(\ProductCatalogItem.name)])
+    private var catalogProducts: [ProductCatalogItem]
+    @Query(sort: \Supplier.name) private var suppliers: [Supplier]
     let job: JobRecord
     let item: PurchaseItem?
 
     @State private var supplier: String
+    @State private var selectedCatalogProductID: UUID?
     @State private var itemName: String
     @State private var quantityText: String
     @State private var selectedUnit: String
     @State private var customUnit: String
     @State private var unitPriceText: String
     @State private var note: String
+    @State private var updatesCatalogProduct = false
     @State private var validationMessage: String?
     @State private var errorMessage: String?
 
@@ -24,6 +29,7 @@ struct PurchaseItemFormView: View {
         let existingUnit = item?.unit ?? MaterialUnit.pieces.rawValue
         let isPreset = MaterialUnit.allCases.contains { $0.rawValue == existingUnit }
         _supplier = State(initialValue: item?.supplier ?? "")
+        _selectedCatalogProductID = State(initialValue: nil)
         _itemName = State(initialValue: item?.itemName ?? "")
         _quantityText = State(initialValue: item?.quantity.description ?? "")
         _selectedUnit = State(initialValue: isPreset ? existingUnit : "custom")
@@ -36,6 +42,17 @@ struct PurchaseItemFormView: View {
         NavigationStack {
             Form {
                 Section("Purchase item") {
+                    Picker("Product catalog", selection: $selectedCatalogProductID) {
+                        Text("Choose product").tag(UUID?.none)
+                        ForEach(catalogProducts) { product in
+                            Text(catalogDisplayName(for: product))
+                                .tag(Optional(product.id))
+                        }
+                    }
+                    .onChange(of: selectedCatalogProductID) { _, newValue in
+                        applyCatalogProduct(id: newValue)
+                    }
+
                     TextField("Supplier", text: $supplier)
                     TextField("Item", text: $itemName)
                     TextField("Quantity", text: $quantityText)
@@ -55,6 +72,10 @@ struct PurchaseItemFormView: View {
                         .keyboardType(.decimalPad)
                     TextField("Note", text: $note, axis: .vertical)
                         .lineLimit(2...5)
+
+                    if selectedCatalogProductID != nil {
+                        Toggle("Update selected product in catalog", isOn: $updatesCatalogProduct)
+                    }
 
                     if let validationMessage {
                         Text(validationMessage)
@@ -92,6 +113,23 @@ struct PurchaseItemFormView: View {
         guard let item else { return }
         quantityText = EntryFormatting.formatDecimal(item.quantity, locale: locale)
         unitPriceText = EntryFormatting.formatDecimal(item.unitPrice, locale: locale)
+    }
+
+    private func catalogDisplayName(for product: ProductCatalogItem) -> String {
+        let number = product.itemNumber?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return number.isEmpty ? product.name : "\(number) – \(product.name)"
+    }
+
+    private func applyCatalogProduct(id: UUID?) {
+        guard let product = catalogProducts.first(where: { $0.id == id }) else {
+            updatesCatalogProduct = false
+            return
+        }
+        supplier = product.supplierRecord?.name ?? product.supplier
+        itemName = product.name
+        selectedUnit = MaterialUnit(rawValue: product.unit) == nil ? "custom" : product.unit
+        customUnit = selectedUnit == "custom" ? product.unit : ""
+        unitPriceText = EntryFormatting.formatDecimal(product.unitPrice, locale: locale)
     }
 
     private func save() {
@@ -140,6 +178,20 @@ struct PurchaseItemFormView: View {
         savedItem.note = note.trimmingCharacters(in: .whitespacesAndNewlines)
         savedItem.updatedAt = .now
         job.updatedAt = .now
+
+        if updatesCatalogProduct,
+           let selectedCatalogProductID,
+           let product = catalogProducts.first(where: { $0.id == selectedCatalogProductID }) {
+            let matchingSupplier = suppliers.first {
+                $0.name.localizedCaseInsensitiveCompare(trimmedSupplier) == .orderedSame
+            }
+            product.supplier = trimmedSupplier
+            product.supplierRecord = matchingSupplier
+            product.name = trimmedName
+            product.unit = resolvedUnit
+            product.unitPrice = unitPrice
+            product.updatedAt = .now
+        }
 
         do {
             try modelContext.save()

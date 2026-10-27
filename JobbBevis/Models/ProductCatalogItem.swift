@@ -4,7 +4,7 @@ import SwiftData
 @Model
 final class ProductCatalogItem {
     @Attribute(.unique) var id: UUID
-    var itemNumber: String?
+    @Attribute(.unique) var itemNumber: String?
     var supplier: String
     var supplierRecord: Supplier?
     var name: String

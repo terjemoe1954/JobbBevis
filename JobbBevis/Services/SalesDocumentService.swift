@@ -239,19 +239,36 @@ struct SalesDocumentPDFService {
                 y += ceil(size.height) + gap
             }
             func money(_ value: Decimal) -> String { PriceEstimateCalculator.currency(value, locale: locale) }
+            func localized(_ resource: String.LocalizationValue) -> String {
+                String(localized: resource, locale: locale)
+            }
+            func localizedUnit(_ unit: MaterialUnit) -> String {
+                switch unit {
+                case .pieces: localized("pcs")
+                case .millimeter: "mm"
+                case .centimeter: "cm"
+                case .meter: "m"
+                case .squareMeter: "m²"
+                case .cubicMeter: "m³"
+                case .liter: "l"
+                case .kilogram: "kg"
+                case .hour: localized("h")
+                case .package: localized("pkg")
+                }
+            }
             let title: String
             switch kind {
-            case .orderConfirmation: title = String(localized: "Order confirmation")
+            case .orderConfirmation: title = localized("Order confirmation")
             case let .invoice(_, _, _, isCopy):
-                title = isCopy ? String(localized: "Invoice copy") : String(localized: "Invoice")
+                title = isCopy ? localized("Invoice copy") : localized("Invoice")
             case .creditNote:
-                title = String(localized: "Credit note")
+                title = localized("Credit note")
             }
             text(title, font: .boldSystemFont(ofSize: 26), gap: 14)
             text(snapshot.sellerName, font: .boldSystemFont(ofSize: 13))
-            var organization = String(localized: "Org. no.") + ": " + snapshot.sellerOrganizationNumber
+            var organization = localized("Org. no.") + ": " + snapshot.sellerOrganizationNumber
             if snapshot.sellerIsVATRegistered { organization += " MVA" }
-            if snapshot.sellerIsRegisteredInBusinessRegister { organization += " · " + String(localized: "Register of Business Enterprises") }
+            if snapshot.sellerIsRegisteredInBusinessRegister { organization += " · " + localized("Register of Business Enterprises") }
             text(organization, font: .systemFont(ofSize: 9), color: .darkGray)
             text(snapshot.sellerAddress, font: .systemFont(ofSize: 9), color: .darkGray, gap: 12)
             if !snapshot.sellerPhone.isEmpty {
@@ -262,25 +279,25 @@ struct SalesDocumentPDFService {
             }
 
             if case let .invoice(number, issuedAt, dueDate, _) = kind {
-                text(String(localized: "Invoice number") + ": " + number, font: .boldSystemFont(ofSize: 11))
-                text(String(localized: "Invoice date") + ": " + issuedAt.formatted(.dateTime.day().month().year().locale(locale)), font: .systemFont(ofSize: 10))
-                text(String(localized: "Due date") + ": " + dueDate.formatted(.dateTime.day().month().year().locale(locale)), font: .systemFont(ofSize: 10))
+                text(localized("Invoice number") + ": " + number, font: .boldSystemFont(ofSize: 11))
+                text(localized("Invoice date") + ": " + issuedAt.formatted(.dateTime.day().month().year().locale(locale)), font: .systemFont(ofSize: 10))
+                text(localized("Due date") + ": " + dueDate.formatted(.dateTime.day().month().year().locale(locale)), font: .systemFont(ofSize: 10))
             } else if case let .creditNote(number, issuedAt, originalInvoiceNumber) = kind {
-                text(String(localized: "Credit note number") + ": " + number, font: .boldSystemFont(ofSize: 11))
-                text(String(localized: "Credit note date") + ": " + issuedAt.formatted(.dateTime.day().month().year().locale(locale)), font: .systemFont(ofSize: 10))
-                text(String(localized: "Credits invoice") + ": " + originalInvoiceNumber, font: .systemFont(ofSize: 10))
+                text(localized("Credit note number") + ": " + number, font: .boldSystemFont(ofSize: 11))
+                text(localized("Credit note date") + ": " + issuedAt.formatted(.dateTime.day().month().year().locale(locale)), font: .systemFont(ofSize: 10))
+                text(localized("Credits invoice") + ": " + originalInvoiceNumber, font: .systemFont(ofSize: 10))
             } else {
-                text(String(localized: "Date") + ": " + Date.now.formatted(.dateTime.day().month().year().locale(locale)), font: .systemFont(ofSize: 10))
+                text(localized("Date") + ": " + Date.now.formatted(.dateTime.day().month().year().locale(locale)), font: .systemFont(ofSize: 10))
             }
-            text(String(localized: "Customer") + ": " + snapshot.customerName, font: .boldSystemFont(ofSize: 11), gap: 3)
+            text(localized("Customer") + ": " + snapshot.customerName, font: .boldSystemFont(ofSize: 11), gap: 3)
             if !snapshot.customerOrganizationNumber.isEmpty {
-                text(String(localized: "Org. no.") + ": " + snapshot.customerOrganizationNumber, font: .systemFont(ofSize: 10))
+                text(localized("Org. no.") + ": " + snapshot.customerOrganizationNumber, font: .systemFont(ofSize: 10))
             }
             text(snapshot.customerAddress, font: .systemFont(ofSize: 10))
-            text(String(localized: "Job number") + ": " + snapshot.jobNumber, font: .systemFont(ofSize: 10))
+            text(localized("Job number") + ": " + snapshot.jobNumber, font: .systemFont(ofSize: 10))
             text(snapshot.jobTitle, font: .systemFont(ofSize: 10))
-            text(String(localized: "Delivery date") + ": " + snapshot.deliveryDate.formatted(.dateTime.day().month().year().locale(locale)), font: .systemFont(ofSize: 10))
-            text(String(localized: "Delivery address") + ": " + snapshot.deliveryAddress, font: .systemFont(ofSize: 10), gap: 14)
+            text(localized("Delivery date") + ": " + snapshot.deliveryDate.formatted(.dateTime.day().month().year().locale(locale)), font: .systemFont(ofSize: 10))
+            text(localized("Delivery address") + ": " + snapshot.deliveryAddress, font: .systemFont(ofSize: 10), gap: 14)
 
             for line in snapshot.lines {
                 if y > page.height - 150 { context.beginPage(); y = margin }
@@ -288,15 +305,16 @@ struct SalesDocumentPDFService {
                 let quantity = EntryFormatting.formatDecimal(line.quantity, locale: locale)
                 let vat = EntryFormatting.formatDecimal(line.vatRatePercent, locale: locale)
                 let lineSubtotal = isCreditNote(kind) ? -line.subtotal : line.subtotal
-                text("\(quantity) \(line.unit) × \(money(line.unitPrice)) · \(String(localized: "VAT")) \(vat)% = \(money(lineSubtotal))", font: .systemFont(ofSize: 9), color: .darkGray, gap: 7)
+                let unit = MaterialUnit(rawValue: line.unit).map(localizedUnit) ?? line.unit
+                text("\(quantity) \(unit) × \(money(line.unitPrice)) · \(localized("VAT")) \(vat)% = \(money(lineSubtotal))", font: .systemFont(ofSize: 9), color: .darkGray, gap: 7)
             }
             y += 8
             let sign: Decimal = isCreditNote(kind) ? -1 : 1
-            text(String(localized: "Subtotal excluding VAT") + ": " + money(snapshot.subtotal * sign), font: .systemFont(ofSize: 11))
-            text(String(localized: "VAT") + ": " + money(snapshot.vat * sign), font: .systemFont(ofSize: 11))
-            text(String(localized: "Total") + ": " + money(snapshot.total * sign), font: .boldSystemFont(ofSize: 14), gap: 12)
+            text(localized("Subtotal excluding VAT") + ": " + money(snapshot.subtotal * sign), font: .systemFont(ofSize: 11))
+            text(localized("VAT") + ": " + money(snapshot.vat * sign), font: .systemFont(ofSize: 11))
+            text(localized("Total") + ": " + money(snapshot.total * sign), font: .boldSystemFont(ofSize: 14), gap: 12)
             if case .invoice = kind {
-                text(String(localized: "Bank account") + ": " + snapshot.sellerBankAccount, font: .boldSystemFont(ofSize: 11))
+                text(localized("Bank account") + ": " + snapshot.sellerBankAccount, font: .boldSystemFont(ofSize: 11))
             }
         }
         return url

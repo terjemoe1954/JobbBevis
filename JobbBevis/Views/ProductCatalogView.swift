@@ -155,6 +155,10 @@ struct ProductCatalogItemFormView: View {
                 }
             }
             .navigationTitle(product == nil ? "New product" : "Edit product")
+            .task {
+                guard product == nil, itemNumber.isEmpty else { return }
+                itemNumber = (try? BusinessNumberService.nextItemNumber(in: modelContext)) ?? ""
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) { Button("Save", action: save) }

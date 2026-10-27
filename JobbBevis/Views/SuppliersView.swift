@@ -140,6 +140,10 @@ struct SupplierFormView: View {
                 }
             }
             .navigationTitle(supplier == nil ? "New supplier" : "Edit supplier")
+            .task {
+                guard supplier == nil, supplierNumber.isEmpty else { return }
+                supplierNumber = (try? BusinessNumberService.nextSupplierNumber(in: modelContext)) ?? ""
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) { Button("Save", action: save) }

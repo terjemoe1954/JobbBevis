@@ -61,6 +61,10 @@ struct CustomerFormView: View {
                 }
             }
             .navigationTitle(customer == nil ? "New customer" : "Edit customer")
+            .task {
+                guard customer == nil, customerNumber.isEmpty else { return }
+                customerNumber = (try? BusinessNumberService.nextCustomerNumber(in: modelContext)) ?? ""
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
