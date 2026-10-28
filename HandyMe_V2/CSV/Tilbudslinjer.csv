@@ -1,0 +1,10 @@
+﻿TilbudID;ArbeidspakkeID;Beskrivelse;PrisEksMva;MvaSatsProsent;PrisInklMva
+AN-001;AP-01;Rigg, beskyttelse og avfall;52000.0;25;65000
+AN-001;AP-02;Male vegger og tak;128000.0;25;160000
+AN-001;AP-03;Nytt kjøkken, leveranse og montering;272000.0;25;340000
+AN-001;AP-04;Elektrisk anlegg, lys og kontroll;224000.0;25;280000
+AN-001;AP-05;Vannrør og varmtvannsbereder;144000.0;25;180000
+AN-001;AP-06;Varmeovner og styring;48000.0;25;60000
+AN-001;AP-07;Rive og bygge veranda 22 m²;192000.0;25;240000
+AN-001;AP-08;Prosjektledelse og koordinering;48000.0;25;60000
+AN-001;RESERVE;Uforutsett reserve 15 %;166200;25;207750

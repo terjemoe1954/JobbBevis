@@ -38,6 +38,7 @@ final class JobRecord {
     var invoiceDraftMarker: Bool?
     var invoiceDraftDueDate: Date?
     var archivedAt: Date?
+    var projectModeRawValue: String?
     var customer: Customer
     @Relationship(deleteRule: .cascade, inverse: \JobPhoto.job)
     var photos: [JobPhoto]
@@ -47,6 +48,12 @@ final class JobRecord {
     var materialEntries: [MaterialEntry]
     @Relationship(deleteRule: .cascade, inverse: \PurchaseItem.job)
     var purchaseItems: [PurchaseItem]
+    @Relationship(deleteRule: .cascade, inverse: \ProjectTrade.job)
+    var projectTrades: [ProjectTrade]
+    @Relationship(deleteRule: .cascade, inverse: \ProjectParty.job)
+    var projectParties: [ProjectParty]
+    @Relationship(deleteRule: .cascade, inverse: \WorkPackage.job)
+    var workPackages: [WorkPackage]
 
     var isSampleData: Bool {
         get { sampleDataMarker ?? false }
@@ -66,6 +73,11 @@ final class JobRecord {
 
     var isArchived: Bool {
         archivedAt != nil
+    }
+
+    var projectMode: ProjectMode {
+        get { ProjectMode(rawValue: projectModeRawValue ?? "") ?? .simpleJob }
+        set { projectModeRawValue = newValue == .simpleJob ? nil : newValue.rawValue }
     }
 
     var status: JobStatus {
@@ -123,10 +135,14 @@ final class JobRecord {
         self.invoiceDraftMarker = hasInvoiceDraft ? true : nil
         self.invoiceDraftDueDate = hasInvoiceDraft ? invoiceDraftDueDate : nil
         self.archivedAt = archivedAt
+        self.projectModeRawValue = nil
         self.photos = photos
         self.workEntries = workEntries
         self.materialEntries = materialEntries
         self.purchaseItems = purchaseItems
+        self.projectTrades = []
+        self.projectParties = []
+        self.workPackages = []
     }
 }
 

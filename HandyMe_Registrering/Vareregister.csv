@@ -1,0 +1,9 @@
+﻿VareID;Vare/tjeneste;Kategori;Enhet;Testpris inkl mva;Leverandør;Kommentar
+V-001;Maling, sparkel og tildekking;Overflater;pakke;45000;Ikke valgt;Samlet materialbudsjett
+V-002;Premium kjøkken og hvitevarer;Kjøkken;pakke;255000;Ikke valgt;Kjøkkenmål må bekreftes
+V-003;Sikringsskap, kabler, kontakter og lys;Elektro;pakke;125000;Elektroforetak;Kun registrert elektrovirksomhet
+V-004;Vannrør, deler og bereder;VVS;pakke;75000;Rørlegger;Teknisk befaring kreves
+V-005;Varmeovner og styring;Varme;pakke;40000;Ikke valgt;Testsum
+V-006;Terrassebord, bæring og rekkverk;Veranda;pakke;115000;Ikke valgt;22 m², konstruksjon vurderes
+V-007;Rigg og avfallsmateriell;Rigg;pakke;30000;Ikke valgt;Testsum
+V-008;Dokumentasjonsmateriell;Administrasjon;pakke;5000;Ikke valgt;Testsum

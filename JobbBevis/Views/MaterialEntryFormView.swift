@@ -63,7 +63,7 @@ struct MaterialEntryFormView: View {
                     }
 
                     Picker("Unit", selection: $selectedUnit) {
-                        ForEach(MaterialUnit.allCases) { unit in
+                        ForEach(MaterialUnit.alphabeticallySorted) { unit in
                             Text(unit.title).tag(unit.rawValue)
                         }
                         Text("Custom unit").tag("custom")

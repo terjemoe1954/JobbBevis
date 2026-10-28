@@ -19,7 +19,7 @@ struct PreparedBackup {
 
 @MainActor
 struct BackupService {
-    static let schemaVersion = 1
+    static let schemaVersion = 2
     static let maximumArchiveBytes = 250 * 1_024 * 1_024
     private static let maximumFileBytes = 25 * 1_024 * 1_024
     private static let maximumFiles = 5_000
@@ -35,6 +35,9 @@ struct BackupService {
         let purchaseItems = try context.fetch(FetchDescriptor<PurchaseItem>())
         let products = try context.fetch(FetchDescriptor<ProductCatalogItem>())
         let suppliers = try context.fetch(FetchDescriptor<Supplier>())
+        let projectTrades = try context.fetch(FetchDescriptor<ProjectTrade>())
+        let projectParties = try context.fetch(FetchDescriptor<ProjectParty>())
+        let workPackages = try context.fetch(FetchDescriptor<WorkPackage>())
         let invoices = try context.fetch(FetchDescriptor<InvoiceRecord>())
         let creditNotes = try context.fetch(FetchDescriptor<CreditNoteRecord>())
         let metadata = try context.fetch(FetchDescriptor<AppMetadata>())
@@ -145,6 +148,7 @@ struct BackupService {
                     hasInvoiceDraft: $0.hasInvoiceDraft,
                     invoiceDraftDueDate: $0.invoiceDraftDueDate,
                     archivedAt: $0.archivedAt
+                    , projectMode: $0.projectModeRawValue
                 )
             },
             photos: photoRecords,
@@ -155,6 +159,7 @@ struct BackupService {
                     workDate: $0.workDate,
                     details: $0.details,
                     durationMinutes: $0.durationMinutes,
+                    drivingKilometers: $0.drivingKilometers,
                     createdAt: $0.createdAt,
                     updatedAt: $0.updatedAt
                 )
@@ -183,18 +188,45 @@ struct BackupService {
                     unitPrice: $0.unitPrice,
                     note: $0.note,
                     createdAt: $0.createdAt,
-                    updatedAt: $0.updatedAt
+                    updatedAt: $0.updatedAt,
+                    transferredMaterialID: $0.transferredMaterialID,
+                    transferredAt: $0.transferredAt
                 )
             },
             products: products.map {
                 ProductRecord(id: $0.id, itemNumber: $0.itemNumber, supplier: $0.supplier,
                               supplierID: $0.supplierRecord?.id, name: $0.name, unit: $0.unit,
-                              unitPrice: $0.unitPrice, createdAt: $0.createdAt, updatedAt: $0.updatedAt)
+                              quantity: $0.quantity, unitPrice: $0.unitPrice,
+                              createdAt: $0.createdAt, updatedAt: $0.updatedAt)
             },
             suppliers: suppliers.map {
                 SupplierRecord(id: $0.id, supplierNumber: $0.supplierNumber, name: $0.name,
                                contactPerson: $0.contactPerson, phone: $0.phone, email: $0.email,
                                address: $0.address, createdAt: $0.createdAt, updatedAt: $0.updatedAt)
+            },
+            projectTrades: projectTrades.map {
+                ProjectTradeBackup(id: $0.id, jobID: $0.job.id, code: $0.code, name: $0.name,
+                                   isInternal: $0.isInternal, plannedHours: $0.plannedHours,
+                                   createdAt: $0.createdAt, updatedAt: $0.updatedAt)
+            },
+            projectParties: projectParties.map {
+                ProjectPartyBackup(id: $0.id, jobID: $0.job.id, supplierID: $0.supplier?.id,
+                                   tradeID: $0.trade?.id, role: $0.roleRawValue,
+                                   contactPerson: $0.contactPerson, note: $0.note,
+                                   createdAt: $0.createdAt, updatedAt: $0.updatedAt)
+            },
+            workPackages: workPackages.map {
+                WorkPackageBackup(id: $0.id, jobID: $0.job.id, tradeID: $0.trade?.id,
+                                  responsiblePartyID: $0.responsibleParty?.id,
+                                  packageNumber: $0.packageNumber, title: $0.title,
+                                  details: $0.details, status: $0.statusRawValue,
+                                  plannedStart: $0.plannedStart, plannedEnd: $0.plannedEnd,
+                                  progressPercent: $0.progressPercent,
+                                  budgetExcludingVAT: $0.budgetExcludingVAT,
+                                  plannedHours: $0.plannedHours,
+                                  materialBudgetIncludingVAT: $0.materialBudgetIncludingVAT,
+                                  laborBudgetIncludingVAT: $0.laborBudgetIncludingVAT,
+                                  createdAt: $0.createdAt, updatedAt: $0.updatedAt)
             },
             invoices: invoices.map {
                 InvoiceBackupRecord(id: $0.id, invoiceNumber: $0.invoiceNumber, jobID: $0.jobID,
@@ -329,12 +361,16 @@ struct BackupService {
             throw BackupError.countMismatch
         }
 
-        let totalRecords = archive.companies.count + archive.customers.count + archive.jobs.count
-            + archive.photos.count + archive.workEntries.count + archive.materials.count
-            + (archive.purchaseItems?.count ?? 0) + (archive.products?.count ?? 0)
-            + (archive.suppliers?.count ?? 0)
-            + (archive.invoices?.count ?? 0) + archive.metadata.count
-            + (archive.creditNotes?.count ?? 0)
+        let requiredRecordCount = archive.companies.count + archive.customers.count
+            + archive.jobs.count + archive.photos.count + archive.workEntries.count
+            + archive.materials.count + archive.metadata.count
+        let catalogRecordCount = (archive.purchaseItems?.count ?? 0)
+            + (archive.products?.count ?? 0) + (archive.suppliers?.count ?? 0)
+        let projectRecordCount = (archive.projectTrades?.count ?? 0)
+            + (archive.projectParties?.count ?? 0) + (archive.workPackages?.count ?? 0)
+        let documentRecordCount = (archive.invoices?.count ?? 0) + (archive.creditNotes?.count ?? 0)
+        let totalRecords = requiredRecordCount + catalogRecordCount
+            + projectRecordCount + documentRecordCount
         guard totalRecords <= Self.maximumRecords, archive.files.count <= Self.maximumFiles else {
             throw BackupError.tooManyRecords
         }
@@ -351,6 +387,11 @@ struct BackupService {
         try requireUnique((archive.products ?? []).compactMap(\.itemNumber))
         try requireUnique((archive.suppliers ?? []).map(\.id))
         try requireUnique((archive.suppliers ?? []).map(\.supplierNumber))
+        try requireUnique((archive.projectTrades ?? []).map(\.id))
+        try requireUnique((archive.projectParties ?? []).map(\.id))
+        try requireUnique((archive.workPackages ?? []).map(\.id))
+        try requireUnique((archive.projectTrades ?? []).map { "\($0.jobID)|\($0.code.lowercased())" })
+        try requireUnique((archive.workPackages ?? []).map { "\($0.jobID)|\($0.packageNumber.lowercased())" })
         try requireUnique(archive.customers.compactMap(\.customerNumber))
         try requireUnique((archive.invoices ?? []).map(\.id))
         try requireUnique((archive.invoices ?? []).map(\.invoiceNumber))
@@ -365,10 +406,39 @@ struct BackupService {
         let jobIDs = Set(archive.jobs.map(\.id))
         let invoiceIDs = Set((archive.invoices ?? []).map(\.id))
         let supplierIDs = Set((archive.suppliers ?? []).map(\.id))
+        let tradeIDs = Set((archive.projectTrades ?? []).map(\.id))
+        let partyIDs = Set((archive.projectParties ?? []).map(\.id))
         let fileIDs = Set(archive.files.map(\.id))
+        let validProjectModes = archive.jobs.allSatisfy {
+            $0.projectMode.map { ProjectMode(rawValue: $0) != nil } ?? true
+        }
+        let validTrades = (archive.projectTrades ?? []).allSatisfy {
+            jobIDs.contains($0.jobID) && !$0.code.isEmpty && !$0.name.isEmpty
+                && ($0.plannedHours.map { $0 >= 0 } ?? true)
+        }
+        let validParties = (archive.projectParties ?? []).allSatisfy {
+            jobIDs.contains($0.jobID)
+                && ProjectPartyRole(rawValue: $0.role) != nil
+                && ($0.supplierID.map { supplierIDs.contains($0) } ?? true)
+                && ($0.tradeID.map { tradeIDs.contains($0) } ?? true)
+        }
+        let validWorkPackages = (archive.workPackages ?? []).allSatisfy {
+            jobIDs.contains($0.jobID) && !$0.packageNumber.isEmpty && !$0.title.isEmpty
+                && WorkPackageStatus(rawValue: $0.status) != nil
+                && ($0.tradeID.map { tradeIDs.contains($0) } ?? true)
+                && ($0.responsiblePartyID.map { partyIDs.contains($0) } ?? true)
+                && (0...100).contains($0.progressPercent)
+                && ($0.budgetExcludingVAT.map { $0 >= 0 } ?? true)
+                && ($0.plannedHours.map { $0 >= 0 } ?? true)
+                && ($0.materialBudgetIncludingVAT.map { $0 >= 0 } ?? true)
+                && ($0.laborBudgetIncludingVAT.map { $0 >= 0 } ?? true)
+        }
         guard archive.jobs.allSatisfy({ customerIDs.contains($0.customerID) }),
               archive.photos.allSatisfy({ jobIDs.contains($0.jobID) && fileIDs.contains($0.fileID) }),
-              archive.workEntries.allSatisfy({ jobIDs.contains($0.jobID) && $0.durationMinutes > 0 }),
+              archive.workEntries.allSatisfy({
+                  jobIDs.contains($0.jobID) && $0.durationMinutes > 0
+                      && ($0.drivingKilometers.map { $0 >= 0 } ?? true)
+              }),
               archive.materials.allSatisfy({
                   jobIDs.contains($0.jobID)
                       && $0.quantity > 0
@@ -400,7 +470,8 @@ struct BackupService {
                       record.vatRatePercent
                   ].compactMap { $0 }.allSatisfy { $0 >= 0 }
               }),
-              archive.jobs.allSatisfy({ JobStatus(rawValue: $0.status) != nil })
+              archive.jobs.allSatisfy({ JobStatus(rawValue: $0.status) != nil }),
+              validProjectModes, validTrades, validParties, validWorkPackages
         else {
             throw BackupError.invalidReferences
         }
@@ -500,6 +571,9 @@ struct BackupService {
             .compactMap(\.nextCreditNoteSequence)
             .max() ?? 1
         try context.transaction {
+            for model in try context.fetch(FetchDescriptor<WorkPackage>()) { context.delete(model) }
+            for model in try context.fetch(FetchDescriptor<ProjectParty>()) { context.delete(model) }
+            for model in try context.fetch(FetchDescriptor<ProjectTrade>()) { context.delete(model) }
             for model in try context.fetch(FetchDescriptor<JobPhoto>()) { context.delete(model) }
             for model in try context.fetch(FetchDescriptor<WorkEntry>()) { context.delete(model) }
             for model in try context.fetch(FetchDescriptor<MaterialEntry>()) { context.delete(model) }
@@ -558,6 +632,7 @@ struct BackupService {
                     invoiceDraftDueDate: record.invoiceDraftDueDate,
                     archivedAt: record.archivedAt
                 )
+                job.projectMode = record.projectMode.flatMap(ProjectMode.init(rawValue:)) ?? .simpleJob
                 jobByID[record.id] = job
                 context.insert(job)
             }
@@ -585,6 +660,7 @@ struct BackupService {
                     workDate: record.workDate,
                     details: record.details,
                     durationMinutes: record.durationMinutes,
+                    drivingKilometers: record.drivingKilometers,
                     createdAt: record.createdAt,
                     updatedAt: record.updatedAt,
                     job: job
@@ -618,6 +694,8 @@ struct BackupService {
                     note: record.note,
                     createdAt: record.createdAt,
                     updatedAt: record.updatedAt,
+                    transferredMaterialID: record.transferredMaterialID,
+                    transferredAt: record.transferredAt,
                     job: job
                 ))
             }
@@ -639,11 +717,54 @@ struct BackupService {
                 context.insert(supplier)
             }
 
+            var tradeByID: [UUID: ProjectTrade] = [:]
+            for record in archive.projectTrades ?? [] {
+                guard let job = jobByID[record.jobID] else { throw BackupError.invalidReferences }
+                let trade = ProjectTrade(id: record.id, code: record.code, name: record.name,
+                                         isInternal: record.isInternal, plannedHours: record.plannedHours,
+                                         createdAt: record.createdAt, updatedAt: record.updatedAt, job: job)
+                tradeByID[record.id] = trade
+                context.insert(trade)
+            }
+
+            var partyByID: [UUID: ProjectParty] = [:]
+            for record in archive.projectParties ?? [] {
+                guard let job = jobByID[record.jobID],
+                      let role = ProjectPartyRole(rawValue: record.role) else {
+                    throw BackupError.invalidReferences
+                }
+                let party = ProjectParty(id: record.id, role: role,
+                                         contactPerson: record.contactPerson, note: record.note,
+                                         createdAt: record.createdAt, updatedAt: record.updatedAt,
+                                         job: job, supplier: record.supplierID.flatMap { supplierByID[$0] },
+                                         trade: record.tradeID.flatMap { tradeByID[$0] })
+                partyByID[record.id] = party
+                context.insert(party)
+            }
+
+            for record in archive.workPackages ?? [] {
+                guard let job = jobByID[record.jobID],
+                      let status = WorkPackageStatus(rawValue: record.status) else {
+                    throw BackupError.invalidReferences
+                }
+                context.insert(WorkPackage(id: record.id, packageNumber: record.packageNumber,
+                                           title: record.title, details: record.details, status: status,
+                                           plannedStart: record.plannedStart, plannedEnd: record.plannedEnd,
+                                           progressPercent: record.progressPercent,
+                                           budgetExcludingVAT: record.budgetExcludingVAT,
+                                           plannedHours: record.plannedHours,
+                                           materialBudgetIncludingVAT: record.materialBudgetIncludingVAT,
+                                           laborBudgetIncludingVAT: record.laborBudgetIncludingVAT,
+                                           createdAt: record.createdAt, updatedAt: record.updatedAt,
+                                           job: job, trade: record.tradeID.flatMap { tradeByID[$0] },
+                                           responsibleParty: record.responsiblePartyID.flatMap { partyByID[$0] }))
+            }
+
             for record in archive.products ?? [] {
                 context.insert(ProductCatalogItem(
                     id: record.id, itemNumber: record.itemNumber, supplier: record.supplier,
                     supplierRecord: record.supplierID.flatMap { supplierByID[$0] },
-                    name: record.name, unit: record.unit,
+                    name: record.name, quantity: record.quantity ?? 1, unit: record.unit,
                     unitPrice: record.unitPrice, createdAt: record.createdAt, updatedAt: record.updatedAt
                 ))
             }
@@ -816,6 +937,9 @@ private struct BackupArchive: Codable {
     let purchaseItems: [PurchaseRecord]?
     let products: [ProductRecord]?
     let suppliers: [SupplierRecord]?
+    let projectTrades: [ProjectTradeBackup]?
+    let projectParties: [ProjectPartyBackup]?
+    let workPackages: [WorkPackageBackup]?
     let invoices: [InvoiceBackupRecord]?
     let creditNotes: [CreditNoteBackupRecord]?
     let metadata: [MetadataRecord]
@@ -896,6 +1020,50 @@ private struct JobRecordBackup: Codable {
     let hasInvoiceDraft: Bool?
     let invoiceDraftDueDate: Date?
     let archivedAt: Date?
+    let projectMode: String?
+}
+
+private struct ProjectTradeBackup: Codable {
+    let id: UUID
+    let jobID: UUID
+    let code: String
+    let name: String
+    let isInternal: Bool
+    let plannedHours: Decimal?
+    let createdAt: Date
+    let updatedAt: Date
+}
+
+private struct ProjectPartyBackup: Codable {
+    let id: UUID
+    let jobID: UUID
+    let supplierID: UUID?
+    let tradeID: UUID?
+    let role: String
+    let contactPerson: String
+    let note: String
+    let createdAt: Date
+    let updatedAt: Date
+}
+
+private struct WorkPackageBackup: Codable {
+    let id: UUID
+    let jobID: UUID
+    let tradeID: UUID?
+    let responsiblePartyID: UUID?
+    let packageNumber: String
+    let title: String
+    let details: String
+    let status: String
+    let plannedStart: Date?
+    let plannedEnd: Date?
+    let progressPercent: Int
+    let budgetExcludingVAT: Decimal?
+    let plannedHours: Decimal?
+    let materialBudgetIncludingVAT: Decimal?
+    let laborBudgetIncludingVAT: Decimal?
+    let createdAt: Date
+    let updatedAt: Date
 }
 
 private struct PhotoRecord: Codable {
@@ -914,6 +1082,7 @@ private struct WorkRecord: Codable {
     let workDate: Date
     let details: String
     let durationMinutes: Int
+    let drivingKilometers: Decimal?
     let createdAt: Date
     let updatedAt: Date
 }
@@ -941,6 +1110,8 @@ private struct PurchaseRecord: Codable {
     let note: String
     let createdAt: Date
     let updatedAt: Date
+    let transferredMaterialID: UUID?
+    let transferredAt: Date?
 }
 
 private struct MetadataRecord: Codable {
@@ -957,6 +1128,7 @@ private struct ProductRecord: Codable {
     let supplierID: UUID?
     let name: String
     let unit: String
+    let quantity: Decimal?
     let unitPrice: Decimal
     let createdAt: Date
     let updatedAt: Date

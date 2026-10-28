@@ -100,6 +100,7 @@ private struct SupplierRow: View {
 struct SupplierFormView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Supplier.name) private var suppliers: [Supplier]
     let supplier: Supplier?
     let onSave: ((Supplier) -> Void)?
 
@@ -129,6 +130,11 @@ struct SupplierFormView: View {
                     TextField("Supplier number", text: $supplierNumber)
                         .textInputAutocapitalization(.characters)
                     TextField("Name", text: $name)
+                    if let duplicate = duplicateSupplier {
+                        Label("A supplier named \(duplicate.name) already exists. Consider opening the existing supplier or changing the name.", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
                     TextField("Contact person", text: $contactPerson)
                     TextField("Phone", text: $phone)
                         .keyboardType(.phonePad)
@@ -158,6 +164,14 @@ struct SupplierFormView: View {
 
     private var errorBinding: Binding<Bool> {
         Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
+    }
+
+    private var duplicateSupplier: Supplier? {
+        let candidate = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !candidate.isEmpty else { return nil }
+        return suppliers.first {
+            $0.id != supplier?.id && $0.name.localizedCaseInsensitiveCompare(candidate) == .orderedSame
+        }
     }
 
     private func save() {

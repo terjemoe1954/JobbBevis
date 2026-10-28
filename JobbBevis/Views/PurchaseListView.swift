@@ -40,12 +40,24 @@ struct PurchaseListView: View {
             } else {
                 Section {
                     ForEach(orderedItems) { item in
-                        Button {
-                            selectedItem = item
-                        } label: {
-                            PurchaseItemRow(item: item, locale: locale)
+                        HStack(spacing: 12) {
+                            Button {
+                                toggleMaterialTransfer(for: item)
+                            } label: {
+                                Image(systemName: item.isTransferredToMaterials ? "checkmark.circle.fill" : "circle")
+                                    .font(.title2)
+                                    .foregroundStyle(item.isTransferredToMaterials ? .green : .secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(item.isTransferredToMaterials ? "Remove from materials" : "Add to materials")
+
+                            Button {
+                                selectedItem = item
+                            } label: {
+                                PurchaseItemRow(item: item, locale: locale)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                         .swipeActions {
                             Button("Delete", systemImage: "trash", role: .destructive) {
                                 itemPendingDeletion = item
@@ -118,6 +130,37 @@ struct PurchaseListView: View {
         } catch {
             modelContext.rollback()
             errorMessage = String(localized: "The purchase item could not be deleted. Try again.")
+        }
+    }
+
+    private func toggleMaterialTransfer(for item: PurchaseItem) {
+        if let materialID = item.transferredMaterialID {
+            if let material = job.materialEntries.first(where: { $0.id == materialID }) {
+                modelContext.delete(material)
+            }
+            item.transferredMaterialID = nil
+            item.transferredAt = nil
+        } else {
+            let material = MaterialEntry(
+                name: item.itemName,
+                quantity: item.quantity,
+                unit: item.unit,
+                note: item.note,
+                job: job,
+                unitPrice: item.unitPrice
+            )
+            modelContext.insert(material)
+            job.materialEntries.append(material)
+            item.transferredMaterialID = material.id
+            item.transferredAt = .now
+        }
+        item.updatedAt = .now
+        job.updatedAt = .now
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            errorMessage = String(localized: "The purchase item could not be transferred to materials. Try again.")
         }
     }
 }

@@ -1,0 +1,9 @@
+﻿LinjeID;ProsjektID;VareID;Beskrivelse;Mengde;Enhet;Budsjett inkl mva;Bestilt;Mottatt;Kommentar
+H-01;HM-2026-001;V-001;Maling og overflateprodukter;1;pakke;45000;Nei;Nei;Kontroller farger og arealer
+H-02;HM-2026-001;V-002;Kjøkken og hvitevarer;1;pakke;255000;Nei;Nei;Målsatt kjøkkentegning
+H-03;HM-2026-001;V-003;El-materiell;1;pakke;125000;Nei;Nei;Elektroforetak bestiller
+H-04;HM-2026-001;V-004;Rørdeler og bereder;1;pakke;75000;Nei;Nei;Rørlegger bekrefter
+H-05;HM-2026-001;V-005;Varmeovner;1;pakke;40000;Nei;Nei;Avklar plassering
+H-06;HM-2026-001;V-006;Verandamaterialer;1;pakke;115000;Nei;Nei;Avklar bæreevne og tillatelser
+H-07;HM-2026-001;V-007;Rigg/avfall;1;pakke;30000;Nei;Nei;
+H-08;HM-2026-001;V-008;Dokumentasjon;1;pakke;5000;Nei;Nei;

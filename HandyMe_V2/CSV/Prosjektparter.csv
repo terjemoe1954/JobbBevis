@@ -1,0 +1,6 @@
+﻿PartID;ProsjektID;Navn;Rolle;FagID;Kontakt;Merknad
+PART-00;HM-2026-001;HandyMe;Hovedentreprenør;;;Intern prosjektleder
+PART-01;HM-2026-001;HandyMe tømrerteam;Intern utførende;F-T;;Testpart
+PART-02;HM-2026-001;Malerfirma (test);Underleverandør;F-M;;Fiktiv leverandør
+PART-03;HM-2026-001;Elektrofirma (test);Underleverandør;F-E;;Krever registrert elektrovirksomhet
+PART-04;HM-2026-001;Rørleggerfirma (test);Underleverandør;F-R;;Fiktiv leverandør

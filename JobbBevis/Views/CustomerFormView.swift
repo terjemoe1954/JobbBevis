@@ -5,6 +5,7 @@ struct CustomerFormView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @AppStorage(PreferenceKey.validatesNorwegianNumbers) private var validatesNorwegianNumbers = true
+    @Query(sort: \Customer.name) private var customers: [Customer]
     let customer: Customer?
     let onSave: ((Customer) -> Void)?
 
@@ -38,6 +39,11 @@ struct CustomerFormView: View {
                     TextField("Customer number", text: $customerNumber)
                         .textInputAutocapitalization(.characters)
                     TextField("Name", text: $name)
+                    if let duplicate = duplicateCustomer {
+                        Label("A customer named \(duplicate.name) already exists. Consider opening the existing customer or changing the name.", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
                     if showNameError {
                         Text("Enter a customer name.")
                             .font(.caption)
@@ -86,6 +92,14 @@ struct CustomerFormView: View {
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )
+    }
+
+    private var duplicateCustomer: Customer? {
+        let candidate = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !candidate.isEmpty else { return nil }
+        return customers.first {
+            $0.id != customer?.id && $0.name.localizedCaseInsensitiveCompare(candidate) == .orderedSame
+        }
     }
 
     private func save() {

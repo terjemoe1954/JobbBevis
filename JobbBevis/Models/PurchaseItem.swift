@@ -12,7 +12,11 @@ final class PurchaseItem {
     var note: String
     var createdAt: Date
     var updatedAt: Date
+    var transferredMaterialID: UUID?
+    var transferredAt: Date?
     var job: JobRecord
+
+    var isTransferredToMaterials: Bool { transferredMaterialID != nil }
 
     var lineTotal: Decimal {
         quantity * unitPrice
@@ -28,6 +32,8 @@ final class PurchaseItem {
         note: String = "",
         createdAt: Date = .now,
         updatedAt: Date = .now,
+        transferredMaterialID: UUID? = nil,
+        transferredAt: Date? = nil,
         job: JobRecord
     ) {
         self.id = id
@@ -39,6 +45,8 @@ final class PurchaseItem {
         self.note = note
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.transferredMaterialID = transferredMaterialID
+        self.transferredAt = transferredAt
         self.job = job
     }
 }

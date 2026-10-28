@@ -1,0 +1,26 @@
+{
+  "scenario": "Hvasser V2",
+  "projectId": "HM-2026-001",
+  "customerId": "K-001",
+  "mode": "DEMO",
+  "importFormat": "CSV mapped by Codex",
+  "currency": "NOK",
+  "defaultPricesExcludeVat": true,
+  "vatRate": 0.25,
+  "files": [
+    "Kunder",
+    "Prosjekter",
+    "Fagomrader",
+    "Prosjektparter",
+    "Arbeidspakker",
+    "Leverandorer",
+    "Vareregister",
+    "Handleliste",
+    "Timebudsjett",
+    "Reisebudsjett",
+    "Tilbudslinjer",
+    "Dokumentstatus",
+    "Kontrollpunkter",
+    "Bilderegister"
+  ]
+}

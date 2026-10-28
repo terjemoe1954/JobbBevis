@@ -1,0 +1,13 @@
+﻿VareID;Navn;Innkjopsenhet;AntallPerPakke;Forbruksenhet;InnkjopsprisEksMvaPerPakke;LeverandorID;StandardArbeidspakkeID;Kommentar
+V-01;Terrasseskruer A4;eske;200;stk;399;L-01;AP-07;Illustrativ testpris
+V-02;Terrassebord;stk;4.8;meter;249;L-01;AP-07;Illustrativ testpris
+V-03;Utendørs beis;spann;9;liter;1190;L-02;AP-07;Illustrativ testpris
+V-04;Innendørs maling;spann;9;liter;1290;L-02;AP-02;Illustrativ testpris
+V-05;Sparkel;spann;10;liter;520;L-02;AP-02;Illustrativ testpris
+V-06;Kjøkkeninnredning premium;sett;1;sett;145000;L-03;AP-03;Illustrativ testpris
+V-07;Hvitevarer premium;sett;1;sett;65000;L-03;AP-03;Illustrativ testpris
+V-08;Elektrisk kabel;kveil;100;meter;5900;L-04;AP-04;Illustrativ testpris
+V-09;LED downlight;stk;1;stk;650;L-04;AP-04;Illustrativ testpris
+V-10;Panelovn;stk;1;stk;2900;L-04;AP-06;Illustrativ testpris
+V-11;Vannrør PEX;kveil;50;meter;3900;L-05;AP-05;Illustrativ testpris
+V-12;Varmtvannsbereder;stk;1;stk;13500;L-05;AP-05;Illustrativ testpris

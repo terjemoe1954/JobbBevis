@@ -24,7 +24,7 @@ enum SalesDocumentError: LocalizedError {
         case .missingVATRate:
             String(localized: "Enter a VAT rate for the job, or turn off VAT registration in Settings.")
         case .emptyDocument:
-            String(localized: "Add priced labor, materials, or driving before creating the document.")
+            String(localized: "Add priced registered work, materials, or driving before creating the document.")
         case .invoiceAlreadyIssued:
             String(localized: "This job already has an approved invoice. Open it as an invoice copy instead.")
         case .invalidOrganizationNumber:
@@ -71,9 +71,10 @@ enum SalesDocumentService {
         }
 
         var lines: [SalesDocumentLine] = []
-        if let hours = job.estimatedHours, let rate = job.hourlyRate, hours > 0, rate >= 0 {
+        let hours = PriceEstimateCalculator.registeredHours(for: job)
+        if let rate = job.hourlyRate, hours > 0, rate >= 0 {
             lines.append(SalesDocumentLine(
-                id: UUID(), description: String(localized: "Labor"), quantity: hours,
+                id: UUID(), description: String(localized: "Work"), quantity: hours,
                 unit: String(localized: "hours"), unitPrice: rate, vatRatePercent: vatRate
             ))
         }
@@ -84,9 +85,8 @@ enum SalesDocumentService {
                 unit: material.unit, unitPrice: price, vatRatePercent: vatRate
             ))
         }
-        if let kilometers = job.drivingKilometers,
-           let rate = job.drivingRatePerKilometer,
-           kilometers > 0, rate >= 0 {
+        let kilometers = PriceEstimateCalculator.registeredKilometers(for: job)
+        if let rate = job.drivingRatePerKilometer, kilometers > 0, rate >= 0 {
             lines.append(SalesDocumentLine(
                 id: UUID(), description: String(localized: "Driving"), quantity: kilometers,
                 unit: "km", unitPrice: rate, vatRatePercent: vatRate
@@ -254,6 +254,10 @@ struct SalesDocumentPDFService {
                 case .kilogram: "kg"
                 case .hour: localized("h")
                 case .package: localized("pkg")
+                case .bucket: localized("spann")
+                case .box: localized("eske")
+                case .set: localized("sett")
+                case .roll: localized("rull")
                 }
             }
             let title: String

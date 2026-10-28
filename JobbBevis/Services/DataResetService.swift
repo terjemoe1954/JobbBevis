@@ -9,6 +9,9 @@ enum DataResetService {
             for value in try context.fetch(FetchDescriptor<WorkEntry>()) { context.delete(value) }
             for value in try context.fetch(FetchDescriptor<MaterialEntry>()) { context.delete(value) }
             for value in try context.fetch(FetchDescriptor<PurchaseItem>()) { context.delete(value) }
+            for value in try context.fetch(FetchDescriptor<WorkPackage>()) { context.delete(value) }
+            for value in try context.fetch(FetchDescriptor<ProjectParty>()) { context.delete(value) }
+            for value in try context.fetch(FetchDescriptor<ProjectTrade>()) { context.delete(value) }
             for value in try context.fetch(FetchDescriptor<JobRecord>()) { context.delete(value) }
             for value in try context.fetch(FetchDescriptor<Customer>()) { context.delete(value) }
             for value in try context.fetch(FetchDescriptor<ProductCatalogItem>()) { context.delete(value) }

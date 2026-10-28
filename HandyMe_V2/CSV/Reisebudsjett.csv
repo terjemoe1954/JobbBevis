@@ -1,0 +1,2 @@
+﻿ReiseID;ProsjektID;Fra;Til;AntallTurRetur;KmEnVeiEstimat;TimerEnVeiEstimat;TotalKm;TotalTimer;Status;Merknad
+R-01;HM-2026-001;Sørumsand;Hvasser;12;190;3;4560;72;Planlagt;"Kun estimat; reisekostnad prises separat"

@@ -121,6 +121,19 @@ public enum CoreTestSupport {
         source.insert(job)
         let supplier = Supplier(supplierNumber: "L-0001", name: "Catalog Supplier")
         source.insert(supplier)
+        job.projectMode = .mainContract
+        let trade = ProjectTrade(code: "TØM", name: "Carpentry", isInternal: true,
+                                 plannedHours: 80, job: job)
+        let party = ProjectParty(role: .subcontractor, contactPerson: "Site manager",
+                                 job: job, supplier: supplier, trade: trade)
+        let workPackage = WorkPackage(packageNumber: "A-01", title: "Carpentry package",
+                                      status: .inProgress, progressPercent: 25,
+                                      materialBudgetIncludingVAT: 50_000,
+                                      laborBudgetIncludingVAT: 100_000,
+                                      job: job, trade: trade, responsibleParty: party)
+        source.insert(trade)
+        source.insert(party)
+        source.insert(workPackage)
         source.insert(ProductCatalogItem(
             itemNumber: "V-0001", supplier: supplier.name, supplierRecord: supplier,
             name: "Catalog Product", unit: "pcs", unitPrice: 299
@@ -164,6 +177,13 @@ public enum CoreTestSupport {
             && restoredInvoice?.invoiceNumber.hasSuffix("00001") == true
             && restoredCompany?.defaultHourlyRate == 875
             && restoredCompany?.defaultDrivingRatePerKilometer == 6.5
+            && restored.projectMode == .mainContract
+            && restored.projectTrades.first?.code == "TØM"
+            && restored.projectTrades.first?.plannedHours == 80
+            && restored.projectParties.first?.supplier?.supplierNumber == "L-0001"
+            && restored.workPackages.first?.packageNumber == "A-01"
+            && restored.workPackages.first?.responsibleParty?.contactPerson == "Site manager"
+            && restored.workPackages.first?.totalBudgetIncludingVAT == 150_000
     }
 
     public static func priceEstimateTotalsAreCorrect() throws -> Bool {
@@ -338,6 +358,9 @@ public enum CoreTestSupport {
             WorkEntry.self,
             MaterialEntry.self,
             PurchaseItem.self,
+            ProjectTrade.self,
+            ProjectParty.self,
+            WorkPackage.self,
             Supplier.self,
             ProductCatalogItem.self,
             InvoiceRecord.self,

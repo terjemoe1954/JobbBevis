@@ -154,6 +154,23 @@ struct JobDetailView: View {
     }
 }
 
+private struct MainContractSection: View {
+    let job: JobRecord
+
+    var body: some View {
+        Section("Main contract") {
+            NavigationLink {
+                ProjectStructureView(job: job)
+            } label: {
+                Label("Project structure", systemImage: "square.3.layers.3d")
+            }
+            LabeledContent("Trades", value: job.projectTrades.count.formatted())
+            LabeledContent("Project parties", value: job.projectParties.count.formatted())
+            LabeledContent("Work packages", value: job.workPackages.count.formatted())
+        }
+    }
+}
+
 private struct JobPriceEstimateSummary: View {
     @Environment(\.locale) private var locale
     let job: JobRecord

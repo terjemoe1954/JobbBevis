@@ -6,6 +6,7 @@ struct JobFormView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
     @Query(sort: \Customer.name) private var customers: [Customer]
+    @Query(sort: \JobRecord.title) private var jobs: [JobRecord]
     @Query private var profiles: [CompanyProfile]
     let job: JobRecord?
 
@@ -57,6 +58,7 @@ struct JobFormView: View {
                     customers: customers,
                     showTitleError: showTitleError,
                     showCustomerError: showCustomerError,
+                    duplicateTitle: duplicateJob?.title,
                     addCustomer: { isAddingCustomer = true }
                 )
 
@@ -76,7 +78,8 @@ struct JobFormView: View {
                     drivingKilometersText: $drivingKilometersText,
                     drivingRateText: $drivingRateText,
                     appliesVAT: $appliesVAT,
-                    vatRateText: $vatRateText
+                    vatRateText: $vatRateText,
+                    isVATRequired: companyRequiresVAT
                 )
             }
             .navigationTitle(job == nil ? "New job" : "Edit job")
@@ -108,6 +111,20 @@ struct JobFormView: View {
         customers.first { $0.id == selectedCustomerID }
     }
 
+    private var companyRequiresVAT: Bool {
+        profiles.first?.isVATRegistered == true
+    }
+
+    private var duplicateJob: JobRecord? {
+        let candidate = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !candidate.isEmpty, let selectedCustomerID else { return nil }
+        return jobs.first {
+            $0.id != job?.id
+                && $0.customer.id == selectedCustomerID
+                && $0.title.localizedCaseInsensitiveCompare(candidate) == .orderedSame
+        }
+    }
+
     private var errorBinding: Binding<Bool> {
         Binding(
             get: { errorMessage != nil },
@@ -125,6 +142,7 @@ struct JobFormView: View {
         let hourlyRate = optionalDecimal(hourlyRateText)
         let drivingKilometers = optionalDecimal(drivingKilometersText)
         let drivingRate = optionalDecimal(drivingRateText)
+        let appliesVAT = companyRequiresVAT || appliesVAT
         let vatRate = appliesVAT ? optionalDecimal(vatRateText) : nil
         let enteredValues = [estimatedHoursText, hourlyRateText, drivingKilometersText, drivingRateText]
         guard zip(enteredValues, [estimatedHours, hourlyRate, drivingKilometers, drivingRate])
@@ -186,6 +204,9 @@ struct JobFormView: View {
             drivingKilometersText = job.drivingKilometers.map { EntryFormatting.formatDecimal($0, locale: locale) } ?? ""
             drivingRateText = job.drivingRatePerKilometer.map { EntryFormatting.formatDecimal($0, locale: locale) } ?? ""
             vatRateText = job.vatRatePercent.map { EntryFormatting.formatDecimal($0, locale: locale) } ?? "25"
+            if companyRequiresVAT {
+                appliesVAT = true
+            }
             didApplyCompanyRates = true
         } else if let profile = profiles.first {
             hourlyRateText = profile.defaultHourlyRate.map {
@@ -207,6 +228,7 @@ private struct JobPriceEstimateSection: View {
     @Binding var drivingRateText: String
     @Binding var appliesVAT: Bool
     @Binding var vatRateText: String
+    let isVATRequired: Bool
 
     var body: some View {
         Section {
@@ -219,6 +241,7 @@ private struct JobPriceEstimateSection: View {
             TextField("Price per km, excluding VAT", text: $drivingRateText)
                 .keyboardType(.decimalPad)
             Toggle("Add VAT", isOn: $appliesVAT)
+                .disabled(isVATRequired)
             if appliesVAT {
                 TextField("VAT rate in percent", text: $vatRateText)
                     .keyboardType(.decimalPad)
@@ -226,7 +249,11 @@ private struct JobPriceEstimateSection: View {
         } header: {
             Text("Price estimate")
         } footer: {
-            Text("Company rates are filled in automatically for new jobs and can be overridden here. Material prices are entered on each material line.")
+            if isVATRequired {
+                Text("VAT is required because the company is registered in the VAT Register.")
+            } else {
+                Text("Company rates are filled in automatically for new jobs and can be overridden here. Material prices are entered on each material line.")
+            }
         }
     }
 }
@@ -240,11 +267,17 @@ private struct JobBasicsSection: View {
     let customers: [Customer]
     let showTitleError: Bool
     let showCustomerError: Bool
+    let duplicateTitle: String?
     let addCustomer: () -> Void
 
     var body: some View {
         Section("Job") {
             TextField("Title", text: $title)
+            if let duplicateTitle {
+                Label("This customer already has a job titled \(duplicateTitle). Consider opening the existing job or changing the title.", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
             if showTitleError {
                 Text("Enter a job title.")
                     .font(.caption)

@@ -101,6 +101,8 @@ private struct ProductCatalogRow: View {
                 Label(product.supplierRecord?.name ?? product.supplier, systemImage: "truck.box")
                     .foregroundStyle(.secondary)
                 HStack(spacing: 4) {
+                    Text("Quantity: \(EntryFormatting.formatDecimal(product.quantity ?? 1, locale: locale))")
+                    Text("·")
                     Text("Unit price: \(PriceEstimateCalculator.currency(product.unitPrice, locale: locale))")
                     Text("/")
                     if let unit = MaterialUnit(rawValue: product.unit) {
@@ -121,10 +123,12 @@ struct ProductCatalogItemFormView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
     @Query(sort: \Supplier.name) private var suppliers: [Supplier]
+    @Query(sort: \ProductCatalogItem.name) private var products: [ProductCatalogItem]
     let product: ProductCatalogItem?
     @State private var itemNumber: String
     @State private var selectedSupplierID: UUID?
     @State private var name: String
+    @State private var quantityText: String
     @State private var unit: String
     @State private var priceText: String
     @State private var isAddingSupplier = false
@@ -135,6 +139,7 @@ struct ProductCatalogItemFormView: View {
         _itemNumber = State(initialValue: product?.itemNumber ?? "")
         _selectedSupplierID = State(initialValue: product?.supplierRecord?.id)
         _name = State(initialValue: product?.name ?? "")
+        _quantityText = State(initialValue: product.map { String(describing: $0.quantity ?? 1) } ?? "1")
         _unit = State(initialValue: product?.unit ?? MaterialUnit.pieces.rawValue)
         _priceText = State(initialValue: product.map { String(describing: $0.unitPrice) } ?? "")
     }
@@ -156,8 +161,15 @@ struct ProductCatalogItemFormView: View {
                         isAddingSupplier = true
                     }
                     TextField("Name", text: $name)
+                    if let duplicate = duplicateProduct {
+                        Label("A product named \(duplicate.name) already exists. Consider selecting the existing product or changing the name.", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                    TextField("Quantity", text: $quantityText)
+                        .keyboardType(.decimalPad)
                     Picker("Unit", selection: $unit) {
-                        ForEach(MaterialUnit.allCases) { unit in
+                        ForEach(MaterialUnit.alphabeticallySorted) { unit in
                             Text(unit.title).tag(unit.rawValue)
                         }
                     }
@@ -176,6 +188,7 @@ struct ProductCatalogItemFormView: View {
             }
             .onAppear {
                 if let product {
+                    quantityText = EntryFormatting.formatDecimal(product.quantity ?? 1, locale: locale)
                     priceText = EntryFormatting.formatDecimal(product.unitPrice, locale: locale)
                 }
             }
@@ -196,13 +209,23 @@ struct ProductCatalogItemFormView: View {
         Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
     }
 
+    private var duplicateProduct: ProductCatalogItem? {
+        let candidate = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !candidate.isEmpty else { return nil }
+        return products.first {
+            $0.id != product?.id && $0.name.localizedCaseInsensitiveCompare(candidate) == .orderedSame
+        }
+    }
+
     private func save() {
         let trimmedItemNumber = itemNumber.trimmingCharacters(in: .whitespacesAndNewlines)
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let quantity = EntryFormatting.parseDecimal(quantityText, locale: locale)
         guard let supplier = suppliers.first(where: { $0.id == selectedSupplierID }),
               !name.isEmpty, !unit.isEmpty,
+              let quantity, quantity > 0,
               let price = EntryFormatting.parseDecimal(priceText, locale: locale), price >= 0 else {
-            errorMessage = String(localized: "Enter supplier, product, unit, and a valid non-negative price.")
+            errorMessage = String(localized: "Enter supplier, product, a positive quantity, unit, and a valid non-negative price.")
             return
         }
         do {
@@ -222,6 +245,7 @@ struct ProductCatalogItemFormView: View {
                 supplier: supplier.name,
                 supplierRecord: supplier,
                 name: name,
+                quantity: quantity,
                 unit: unit,
                 unitPrice: price
             )
@@ -230,6 +254,7 @@ struct ProductCatalogItemFormView: View {
             saved.supplier = supplier.name
             saved.supplierRecord = supplier
             saved.name = name
+            saved.quantity = quantity
             saved.unit = unit
             saved.unitPrice = price
             saved.updatedAt = .now

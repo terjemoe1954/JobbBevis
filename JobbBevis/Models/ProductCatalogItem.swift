@@ -8,6 +8,7 @@ final class ProductCatalogItem {
     var supplier: String
     var supplierRecord: Supplier?
     var name: String
+    var quantity: Decimal?
     var unit: String
     var unitPrice: Decimal
     var createdAt: Date
@@ -19,6 +20,7 @@ final class ProductCatalogItem {
         supplier: String,
         supplierRecord: Supplier? = nil,
         name: String,
+        quantity: Decimal? = 1,
         unit: String,
         unitPrice: Decimal,
         createdAt: Date = .now,
@@ -29,6 +31,7 @@ final class ProductCatalogItem {
         self.supplier = supplier
         self.supplierRecord = supplierRecord
         self.name = name
+        self.quantity = quantity
         self.unit = unit
         self.unitPrice = unitPrice
         self.createdAt = createdAt

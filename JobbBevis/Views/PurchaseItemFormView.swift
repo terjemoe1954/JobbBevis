@@ -20,6 +20,7 @@ struct PurchaseItemFormView: View {
     @State private var unitPriceText: String
     @State private var note: String
     @State private var updatesCatalogProduct = false
+    @State private var savesAsNewCatalogProduct = false
     @State private var validationMessage: String?
     @State private var errorMessage: String?
 
@@ -59,7 +60,7 @@ struct PurchaseItemFormView: View {
                         .keyboardType(.decimalPad)
 
                     Picker("Unit", selection: $selectedUnit) {
-                        ForEach(MaterialUnit.allCases) { unit in
+                        ForEach(MaterialUnit.alphabeticallySorted) { unit in
                             Text(unit.title).tag(unit.rawValue)
                         }
                         Text("Custom unit").tag("custom")
@@ -75,6 +76,8 @@ struct PurchaseItemFormView: View {
 
                     if selectedCatalogProductID != nil {
                         Toggle("Update selected product in catalog", isOn: $updatesCatalogProduct)
+                    } else {
+                        Toggle("Save as new product in catalog", isOn: $savesAsNewCatalogProduct)
                     }
 
                     if let validationMessage {
@@ -191,6 +194,19 @@ struct PurchaseItemFormView: View {
             product.unit = resolvedUnit
             product.unitPrice = unitPrice
             product.updatedAt = .now
+        } else if savesAsNewCatalogProduct, selectedCatalogProductID == nil {
+            let matchingSupplier = suppliers.first {
+                $0.name.localizedCaseInsensitiveCompare(trimmedSupplier) == .orderedSame
+            }
+            let product = ProductCatalogItem(
+                itemNumber: try? BusinessNumberService.nextItemNumber(in: modelContext),
+                supplier: trimmedSupplier,
+                supplierRecord: matchingSupplier,
+                name: trimmedName,
+                unit: resolvedUnit,
+                unitPrice: unitPrice
+            )
+            modelContext.insert(product)
         }
 
         do {

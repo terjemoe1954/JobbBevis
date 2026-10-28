@@ -12,8 +12,18 @@ enum MaterialUnit: String, CaseIterable, Identifiable {
     case kilogram = "kg"
     case hour = "h"
     case package
+    case bucket = "spann"
+    case box = "eske"
+    case set = "sett"
+    case roll = "rull"
 
     var id: String { rawValue }
+
+    static var alphabeticallySorted: [MaterialUnit] {
+        allCases.sorted {
+            String(localized: $0.title).localizedStandardCompare(String(localized: $1.title)) == .orderedAscending
+        }
+    }
 
     var title: LocalizedStringResource {
         switch self {
@@ -27,6 +37,10 @@ enum MaterialUnit: String, CaseIterable, Identifiable {
         case .kilogram: "Kilogram"
         case .hour: "Hour"
         case .package: "Package"
+        case .bucket: "Spann"
+        case .box: "Eske"
+        case .set: "Sett"
+        case .roll: "Rull"
         }
     }
 
@@ -42,6 +56,10 @@ enum MaterialUnit: String, CaseIterable, Identifiable {
         case .kilogram: "kg"
         case .hour: "h"
         case .package: "pkg"
+        case .bucket: "spann"
+        case .box: "eske"
+        case .set: "sett"
+        case .roll: "rull"
         }
     }
 }

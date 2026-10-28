@@ -17,6 +17,10 @@ struct WorkEntriesView: View {
         job.workEntries.reduce(0) { $0 + $1.durationMinutes }
     }
 
+    private var totalKilometers: Decimal {
+        job.workEntries.reduce(0) { $0 + ($1.drivingKilometers ?? 0) }
+    }
+
     var body: some View {
         Group {
             if orderedEntries.isEmpty {
@@ -39,7 +43,12 @@ struct WorkEntriesView: View {
                         }
                         .onDelete(perform: requestDeletion)
                     } footer: {
-                        Text("Total time: \(EntryFormatting.duration(totalMinutes: totalMinutes))")
+                        VStack(alignment: .leading) {
+                            Text("Total time: \(EntryFormatting.duration(totalMinutes: totalMinutes))")
+                            if totalKilometers > 0 {
+                                Text("Driven kilometers: \(totalKilometers.formatted()) km")
+                            }
+                        }
                     }
                 }
             }
@@ -126,6 +135,11 @@ private struct WorkEntryRow: View {
             }
             Text(entry.details)
                 .lineLimit(2)
+            if let kilometers = entry.drivingKilometers, kilometers > 0 {
+                Label("\(kilometers.formatted()) km", systemImage: "car")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .contentShape(Rectangle())
     }

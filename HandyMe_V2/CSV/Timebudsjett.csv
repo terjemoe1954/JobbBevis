@@ -1,0 +1,9 @@
+﻿LinjeID;ProsjektID;ArbeidspakkeID;FagID;TimerBudsjett;TimerRegistrert;InternKalkyleSatsEksMva;Status
+T-01;HM-2026-001;AP-01;F-T;80;0;850;Budsjett – ikke utført
+T-02;HM-2026-001;AP-02;F-M;210;0;650;Budsjett – ikke utført
+T-03;HM-2026-001;AP-03;F-T;150;0;850;Budsjett – ikke utført
+T-04;HM-2026-001;AP-04;F-E;160;0;1050;Budsjett – ikke utført
+T-05;HM-2026-001;AP-05;F-R;130;0;1050;Budsjett – ikke utført
+T-06;HM-2026-001;AP-06;F-E;40;0;1050;Budsjett – ikke utført
+T-07;HM-2026-001;AP-07;F-T;110;0;850;Budsjett – ikke utført
+T-08;HM-2026-001;AP-08;F-T;25;0;850;Budsjett – ikke utført

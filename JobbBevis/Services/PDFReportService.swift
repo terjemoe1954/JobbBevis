@@ -104,6 +104,10 @@ struct PDFReportService {
                 case .kilogram: localized("kg")
                 case .hour: localized("h")
                 case .package: localized("pkg")
+                case .bucket: localized("spann")
+                case .box: localized("eske")
+                case .set: localized("sett")
+                case .roll: localized("rull")
                 }
             }
 
@@ -299,7 +303,7 @@ struct PDFReportService {
                 let estimate = PriceEstimateCalculator.estimate(for: job)
                 if estimate.subtotal > 0 {
                     addSectionTitle(localized("Price estimate"))
-                    addLabeledValue(localized("Labor"), value: PriceEstimateCalculator.currency(estimate.labor, locale: locale))
+                    addLabeledValue(localized("Work"), value: PriceEstimateCalculator.currency(estimate.labor, locale: locale))
                     addLabeledValue(localized("Materials"), value: PriceEstimateCalculator.currency(estimate.materials, locale: locale))
                     addLabeledValue(localized("Driving"), value: PriceEstimateCalculator.currency(estimate.driving, locale: locale))
                     addLabeledValue(localized("Subtotal excluding VAT"), value: PriceEstimateCalculator.currency(estimate.subtotal, locale: locale))

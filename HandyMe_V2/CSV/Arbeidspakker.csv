@@ -1,0 +1,9 @@
+﻿ArbeidspakkeID;ProsjektID;FagID;AnsvarligPartID;Beskrivelse;Status;FremdriftProsent;BudsjettEksMva;PlanlagteTimer;FaktiskeTimer
+AP-01;HM-2026-001;F-T;PART-01;Rigg, beskyttelse og avfall;Planlagt;0;52000.0;80;0
+AP-02;HM-2026-001;F-M;PART-02;Male vegger og tak;Planlagt;0;128000.0;210;0
+AP-03;HM-2026-001;F-T;PART-01;Nytt kjøkken, leveranse og montering;Planlagt;0;272000.0;150;0
+AP-04;HM-2026-001;F-E;PART-03;Elektrisk anlegg, lys og kontroll;Planlagt;0;224000.0;160;0
+AP-05;HM-2026-001;F-R;PART-04;Vannrør og varmtvannsbereder;Planlagt;0;144000.0;130;0
+AP-06;HM-2026-001;F-E;PART-03;Varmeovner og styring;Planlagt;0;48000.0;40;0
+AP-07;HM-2026-001;F-T;PART-01;Rive og bygge veranda 22 m²;Planlagt;0;192000.0;110;0
+AP-08;HM-2026-001;F-T;PART-00;Prosjektledelse og koordinering;Planlagt;0;48000.0;25;0

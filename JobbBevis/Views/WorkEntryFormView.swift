@@ -4,6 +4,7 @@ import SwiftUI
 struct WorkEntryFormView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.locale) private var locale
     let job: JobRecord
     let entry: WorkEntry?
 
@@ -11,6 +12,7 @@ struct WorkEntryFormView: View {
     @State private var details: String
     @State private var hours: Int
     @State private var minutes: Int
+    @State private var drivingKilometersText: String
     @State private var showDescriptionError = false
     @State private var showDurationError = false
     @State private var errorMessage: String?
@@ -22,6 +24,7 @@ struct WorkEntryFormView: View {
         _details = State(initialValue: entry?.details ?? "")
         _hours = State(initialValue: (entry?.durationMinutes ?? 0) / 60)
         _minutes = State(initialValue: (entry?.durationMinutes ?? 0) % 60)
+        _drivingKilometersText = State(initialValue: entry?.drivingKilometers.map(String.init(describing:)) ?? "")
     }
 
     var body: some View {
@@ -53,6 +56,11 @@ struct WorkEntryFormView: View {
                             .foregroundStyle(.red)
                     }
                 }
+
+                Section("Driving") {
+                    TextField("Driven kilometers", text: $drivingKilometersText)
+                        .keyboardType(.decimalPad)
+                }
             }
             .navigationTitle(entry == nil ? "New work entry" : "Edit work entry")
             .toolbar {
@@ -81,9 +89,19 @@ struct WorkEntryFormView: View {
     private func save() {
         let trimmedDetails = details.trimmingCharacters(in: .whitespacesAndNewlines)
         let durationMinutes = hours * 60 + minutes
+        let kilometersText = drivingKilometersText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let drivingKilometers = kilometersText.isEmpty
+            ? nil
+            : EntryFormatting.parseDecimal(kilometersText, locale: locale)
         showDescriptionError = trimmedDetails.isEmpty
         showDurationError = durationMinutes <= 0
-        guard !trimmedDetails.isEmpty, durationMinutes > 0 else { return }
+        guard !trimmedDetails.isEmpty, durationMinutes > 0,
+              kilometersText.isEmpty || drivingKilometers.map({ $0 >= 0 }) == true else {
+            if !kilometersText.isEmpty {
+                errorMessage = String(localized: "Enter valid driven kilometers.")
+            }
+            return
+        }
 
         let savedEntry: WorkEntry
         if let entry {
@@ -102,6 +120,7 @@ struct WorkEntryFormView: View {
         savedEntry.workDate = workDate
         savedEntry.details = trimmedDetails
         savedEntry.durationMinutes = durationMinutes
+        savedEntry.drivingKilometers = drivingKilometers
         savedEntry.updatedAt = .now
         job.updatedAt = .now
 

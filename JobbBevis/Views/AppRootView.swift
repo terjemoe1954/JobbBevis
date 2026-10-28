@@ -8,6 +8,7 @@ enum AppSection: Hashable {
     case accounting
     case products
     case suppliers
+    case reports
     case settings
 }
 
@@ -46,6 +47,9 @@ struct AppRootView: View {
                 NavigationLink(value: AppSection.suppliers) {
                     SidebarLabel(title: "Suppliers", systemImage: "truck.box.fill", color: .teal)
                 }
+                NavigationLink(value: AppSection.reports) {
+                    SidebarLabel(title: "Reports", systemImage: "doc.text.magnifyingglass", color: .mint)
+                }
                 NavigationLink(value: AppSection.settings) {
                     SidebarLabel(title: "Settings", systemImage: "gearshape.fill", color: .gray)
                 }
@@ -66,6 +70,8 @@ struct AppRootView: View {
                 NavigationStack { ProductCatalogView() }
             case .suppliers:
                 NavigationStack { SuppliersView() }
+            case .reports:
+                NavigationStack { DirectoryReportsView() }
             case .settings:
                 SettingsView()
             }

@@ -7,6 +7,7 @@ final class WorkEntry {
     var workDate: Date
     var details: String
     var durationMinutes: Int
+    var drivingKilometers: Decimal?
     var createdAt: Date
     var updatedAt: Date
     var job: JobRecord
@@ -16,6 +17,7 @@ final class WorkEntry {
         workDate: Date,
         details: String,
         durationMinutes: Int,
+        drivingKilometers: Decimal? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now,
         job: JobRecord
@@ -24,6 +26,7 @@ final class WorkEntry {
         self.workDate = workDate
         self.details = details
         self.durationMinutes = durationMinutes
+        self.drivingKilometers = drivingKilometers
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.job = job

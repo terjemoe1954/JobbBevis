@@ -1,0 +1,6 @@
+﻿FagID;ProsjektID;Fag;Budsjetterte timer;Registrerte timer;Timepris eks mva;Merknad
+T-01;HM-2026-001;Tømrer;340;0;850;Estimert, ikke timeseddel
+T-02;HM-2026-001;Maler;210;0;650;Estimert
+T-03;HM-2026-001;Elektriker;180;0;950;Estimert
+T-04;HM-2026-001;Rørlegger;120;0;950;Estimert
+T-05;HM-2026-001;Prosjektleder;55;0;950;Estimert

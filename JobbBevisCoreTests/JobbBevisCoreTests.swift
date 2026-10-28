@@ -28,4 +28,10 @@ struct JobbBevisCoreTests {
         #expect(try CoreTestSupport.workAndMaterialEntriesCanBeDeleted())
     }
 
+    @Test("Backup preserves main contract project structure")
+    @MainActor
+    func backupPreservesProjectStructure() throws {
+        #expect(try CoreTestSupport.backupRoundTripPreservesData())
+    }
+
 }

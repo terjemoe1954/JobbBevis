@@ -38,6 +38,15 @@ enum PriceEstimateCalculator {
         )
     }
 
+    static func registeredHours(for job: JobRecord) -> Decimal {
+        let minutes = job.workEntries.reduce(0) { $0 + max(0, $1.durationMinutes) }
+        return Decimal(minutes) / 60
+    }
+
+    static func registeredKilometers(for job: JobRecord) -> Decimal {
+        job.workEntries.compactMap(\.drivingKilometers).reduce(0) { $0 + max(0, $1) }
+    }
+
     private static func positive(_ value: Decimal?) -> Decimal {
         guard let value, value > 0 else { return 0 }
         return value
