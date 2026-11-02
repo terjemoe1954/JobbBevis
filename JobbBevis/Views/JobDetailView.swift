@@ -23,6 +23,11 @@ struct JobDetailView: View {
                     isCreatingReport = true
                 }
                 NavigationLink {
+                    SalesDocumentsView(job: job, workflow: .bid)
+                } label: {
+                    Label("Bid", systemImage: "doc.text.magnifyingglass")
+                }
+                NavigationLink {
                     SalesDocumentsView(job: job, workflow: .orderConfirmation)
                 } label: {
                     Label("Order confirmation", systemImage: "doc.text.fill")

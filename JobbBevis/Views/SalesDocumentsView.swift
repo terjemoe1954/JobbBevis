@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 enum SalesDocumentWorkflow {
+    case bid
     case orderConfirmation
     case invoice
 }
@@ -26,10 +27,25 @@ struct SalesDocumentsView: View {
 
     var body: some View {
         Form {
-            if workflow == .orderConfirmation {
+            if workflow == .bid {
+                Section("Bid") {
+                    Button("Create bid", systemImage: "doc.text", action: createBid)
+                    Button("Edit estimate", systemImage: "pencil") {
+                        isEditingInvoiceBasis = true
+                    }
+                    NavigationLink {
+                        PurchaseListView(job: job)
+                    } label: {
+                        Label("Edit purchase list", systemImage: "cart")
+                    }
+                    Text("The bid uses estimated hours and driving, plus priced items from the purchase list.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            } else if workflow == .orderConfirmation {
                 Section("Order confirmation") {
                     Button("Create order confirmation", systemImage: "doc.text", action: createOrderConfirmation)
-                    Text("The order confirmation is generated from the job's current priced labor, materials, and driving.")
+                    Text("The order confirmation uses registered work, registered driving, and priced materials.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -79,7 +95,7 @@ struct SalesDocumentsView: View {
                 }
             }
         }
-        .navigationTitle(workflow == .orderConfirmation ? "Order confirmation" : "Invoice")
+        .navigationTitle(navigationTitle)
         .confirmationDialog("Approve and issue invoice?", isPresented: $showsInvoiceConfirmation, titleVisibility: .visible) {
             Button("Approve and issue", action: issueInvoice)
             Button("Cancel", role: .cancel) { }
@@ -112,6 +128,28 @@ struct SalesDocumentsView: View {
 
     private var errorBinding: Binding<Bool> {
         Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
+    }
+
+    private var navigationTitle: LocalizedStringResource {
+        switch workflow {
+        case .bid: "Bid"
+        case .orderConfirmation: "Order confirmation"
+        case .invoice: "Invoice"
+        }
+    }
+
+    private func createBid() {
+        guard let company = profiles.first else {
+            errorMessage = String(localized: "Complete the company profile in Settings first.")
+            return
+        }
+        do {
+            let snapshot = try SalesDocumentService.snapshot(job: job, company: company, basis: .estimate)
+            let url = try SalesDocumentPDFService().generate(snapshot: snapshot, kind: .bid, locale: locale)
+            preview = SalesDocumentPreview(url: url, title: "Bid")
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func createOrderConfirmation() {

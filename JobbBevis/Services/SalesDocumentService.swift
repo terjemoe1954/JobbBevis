@@ -39,7 +39,16 @@ enum SalesDocumentError: LocalizedError {
 
 @MainActor
 enum SalesDocumentService {
-    static func snapshot(job: JobRecord, company: CompanyProfile) throws -> SalesDocumentSnapshot {
+    enum Basis {
+        case estimate
+        case registered
+    }
+
+    static func snapshot(
+        job: JobRecord,
+        company: CompanyProfile,
+        basis: Basis = .registered
+    ) throws -> SalesDocumentSnapshot {
         let companyName = company.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let organizationNumber = company.organizationNumber.trimmingCharacters(in: .whitespacesAndNewlines)
         let companyAddress = company.address.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -71,21 +80,35 @@ enum SalesDocumentService {
         }
 
         var lines: [SalesDocumentLine] = []
-        let hours = PriceEstimateCalculator.registeredHours(for: job)
+        let hours = basis == .estimate
+            ? max(0, job.estimatedHours ?? 0)
+            : PriceEstimateCalculator.registeredHours(for: job)
         if let rate = job.hourlyRate, hours > 0, rate >= 0 {
             lines.append(SalesDocumentLine(
                 id: UUID(), description: String(localized: "Work"), quantity: hours,
                 unit: String(localized: "hours"), unitPrice: rate, vatRatePercent: vatRate
             ))
         }
-        for material in job.materialEntries.sorted(by: { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) {
-            guard let price = material.unitPrice, material.quantity > 0, price >= 0 else { continue }
-            lines.append(SalesDocumentLine(
-                id: UUID(), description: material.name, quantity: material.quantity,
-                unit: material.unit, unitPrice: price, vatRatePercent: vatRate
-            ))
+        if basis == .estimate {
+            for item in job.purchaseItems.sorted(by: { $0.itemName.localizedStandardCompare($1.itemName) == .orderedAscending }) {
+                guard item.quantity > 0, item.unitPrice >= 0 else { continue }
+                lines.append(SalesDocumentLine(
+                    id: UUID(), description: item.itemName, quantity: item.quantity,
+                    unit: item.unit, unitPrice: item.unitPrice, vatRatePercent: vatRate
+                ))
+            }
+        } else {
+            for material in job.materialEntries.sorted(by: { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) {
+                guard let price = material.unitPrice, material.quantity > 0, price >= 0 else { continue }
+                lines.append(SalesDocumentLine(
+                    id: UUID(), description: material.name, quantity: material.quantity,
+                    unit: material.unit, unitPrice: price, vatRatePercent: vatRate
+                ))
+            }
         }
-        let kilometers = PriceEstimateCalculator.registeredKilometers(for: job)
+        let kilometers = basis == .estimate
+            ? max(0, job.drivingKilometers ?? 0)
+            : PriceEstimateCalculator.registeredKilometers(for: job)
         if let rate = job.drivingRatePerKilometer, kilometers > 0, rate >= 0 {
             lines.append(SalesDocumentLine(
                 id: UUID(), description: String(localized: "Driving"), quantity: kilometers,
@@ -215,6 +238,7 @@ enum SalesDocumentService {
 
 struct SalesDocumentPDFService {
     enum Kind {
+        case bid
         case orderConfirmation
         case invoice(number: String, issuedAt: Date, dueDate: Date, isCopy: Bool)
         case creditNote(number: String, issuedAt: Date, originalInvoiceNumber: String)
@@ -262,6 +286,7 @@ struct SalesDocumentPDFService {
             }
             let title: String
             switch kind {
+            case .bid: title = localized("Bid")
             case .orderConfirmation: title = localized("Order confirmation")
             case let .invoice(_, _, _, isCopy):
                 title = isCopy ? localized("Invoice copy") : localized("Invoice")
@@ -329,8 +354,9 @@ struct SalesDocumentPDFService {
         let directory = support.appending(path: "JobbBevis/Exports", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let prefix: String
-        switch kind {
-        case .orderConfirmation: prefix = "Ordrebekreftelse-\(snapshot.jobNumber)"
+            switch kind {
+            case .bid: prefix = "Anbud-\(snapshot.jobNumber)"
+            case .orderConfirmation: prefix = "Ordrebekreftelse-\(snapshot.jobNumber)"
         case let .invoice(number, _, _, isCopy):
             prefix = isCopy ? "Fakturakopi-\(number)" : "Faktura-\(number)"
         case let .creditNote(number, _, _):
