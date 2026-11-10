@@ -6,6 +6,7 @@ final class PurchaseItem {
     @Attribute(.unique) var id: UUID
     var supplier: String
     var itemName: String
+    var itemNumber: String?
     var quantity: Decimal
     var unit: String
     var unitPrice: Decimal
@@ -16,10 +17,24 @@ final class PurchaseItem {
     var transferredAt: Date?
     var job: JobRecord
 
-    var isTransferredToMaterials: Bool { transferredMaterialID != nil }
+    var linkedMaterials: [MaterialEntry] {
+        job.materialEntries.filter {
+            $0.sourcePurchaseItemID == id
+                || ($0.sourcePurchaseItemID == nil && transferredMaterialID == $0.id)
+        }
+    }
+
+    var usedQuantity: Decimal { linkedMaterials.reduce(0) { $0 + $1.quantity } }
+    var remainingQuantity: Decimal { max(0, quantity - usedQuantity) }
+    var isTransferredToMaterials: Bool { usedQuantity >= quantity }
 
     var lineTotal: Decimal {
         quantity * unitPrice
+    }
+
+    var displayName: String {
+        let number = itemNumber?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return number.isEmpty ? itemName : "\(number) · \(itemName)"
     }
 
     init(
@@ -34,11 +49,13 @@ final class PurchaseItem {
         updatedAt: Date = .now,
         transferredMaterialID: UUID? = nil,
         transferredAt: Date? = nil,
-        job: JobRecord
+        job: JobRecord,
+        itemNumber: String? = nil
     ) {
         self.id = id
         self.supplier = supplier
         self.itemName = itemName
+        self.itemNumber = itemNumber
         self.quantity = quantity
         self.unit = unit
         self.unitPrice = unitPrice

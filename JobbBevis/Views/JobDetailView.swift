@@ -14,6 +14,9 @@ struct JobDetailView: View {
 
     var body: some View {
         List {
+            if job.isExercise {
+                Section { Label("EXERCISE - DO NOT PAY", systemImage: "graduationcap").foregroundStyle(.orange) }
+            }
             JobOverviewSection(job: job)
             JobDescriptionSection(details: job.details)
             JobDocumentationSection(job: job)
@@ -21,6 +24,11 @@ struct JobDetailView: View {
             Section {
                 Button("Create report", systemImage: "doc.richtext") {
                     isCreatingReport = true
+                }
+                NavigationLink {
+                    SalesDocumentsView(job: job, workflow: .invoice)
+                } label: {
+                    Label("Invoice", systemImage: "doc.text")
                 }
                 NavigationLink {
                     SalesDocumentsView(job: job, workflow: .bid)
@@ -178,31 +186,43 @@ private struct MainContractSection: View {
 
 private struct JobPriceEstimateSummary: View {
     @Environment(\.locale) private var locale
+    @Query private var profiles: [CompanyProfile]
     let job: JobRecord
 
-    private var hasEstimate: Bool {
-        job.estimatedHours != nil
-            || job.hourlyRate != nil
-            || job.drivingKilometers != nil
-            || job.drivingRatePerKilometer != nil
-            || job.materialEntries.contains { $0.unitPrice != nil }
-    }
-
     var body: some View {
-        if hasEstimate {
-            let estimate = PriceEstimateCalculator.estimate(for: job)
-            Section("Price estimate") {
-                LabeledContent("Labor", value: PriceEstimateCalculator.currency(estimate.labor, locale: locale))
-                LabeledContent("Materials", value: PriceEstimateCalculator.currency(estimate.materials, locale: locale))
-                LabeledContent("Driving", value: PriceEstimateCalculator.currency(estimate.driving, locale: locale))
-                LabeledContent("Subtotal excluding VAT", value: PriceEstimateCalculator.currency(estimate.subtotal, locale: locale))
-                if job.vatRatePercent != nil {
-                    LabeledContent("VAT", value: PriceEstimateCalculator.currency(estimate.vat, locale: locale))
-                }
-                LabeledContent("Suggested total price", value: PriceEstimateCalculator.currency(estimate.total, locale: locale))
-                    .font(.headline)
+        let planned = PriceEstimateCalculator.summary(for: job, basis: .estimate, isVATRegistered: profiles.first?.isVATRegistered ?? false)
+        let registered = PriceEstimateCalculator.summary(for: job, basis: .registered, isVATRegistered: profiles.first?.isVATRegistered ?? false)
+        Section("Bid basis (planned)") {
+            summaryRows(planned)
+            Text("Estimated hours and driving, with planned items. Registered usage does not change these quantities.")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+        Section("Registered so far") {
+            LabeledContent("Own hours", value: EntryFormatting.formatDecimal(PriceEstimateCalculator.registeredHours(for: job), locale: locale))
+            summaryRows(registered)
+            Text("Actual work and driving from the work log, with priced registered materials and purchased services.")
+                .font(.footnote).foregroundStyle(.secondary)
+            if profiles.first?.isVATRegistered == true && job.vatRatePercent == nil {
+                Text("Enter a VAT rate for the job, or turn off VAT registration in Settings.").foregroundStyle(.orange)
             }
         }
+        if let snapshot = job.acceptedBidSnapshot, let acceptedAt = job.acceptedBidAt {
+            Section("Accepted bid") {
+                LabeledContent("Accepted on", value: acceptedAt.formatted(.dateTime.day().month().year().locale(locale)))
+                LabeledContent("Total", value: PriceEstimateCalculator.currency(snapshot.total, locale: locale))
+                Text("The accepted copy is preserved. Current estimates and registered usage do not change it.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder private func summaryRows(_ summary: PriceEstimate) -> some View {
+        LabeledContent("Own work", value: PriceEstimateCalculator.currency(summary.labor, locale: locale))
+        LabeledContent("Materials and purchased services", value: PriceEstimateCalculator.currency(summary.materials, locale: locale))
+        LabeledContent("Driving", value: PriceEstimateCalculator.currency(summary.driving, locale: locale))
+        LabeledContent("Subtotal excluding VAT", value: PriceEstimateCalculator.currency(summary.subtotal, locale: locale))
+        LabeledContent("VAT", value: PriceEstimateCalculator.currency(summary.vat, locale: locale))
+        LabeledContent("Total", value: PriceEstimateCalculator.currency(summary.total, locale: locale)).font(.headline)
     }
 }
 

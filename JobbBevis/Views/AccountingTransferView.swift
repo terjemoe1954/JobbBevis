@@ -31,23 +31,88 @@ struct AccountingTransferView: View {
     @State private var isExportingCSV = false
     @State private var isExportingPDF = false
     @State private var message: AccountingExportMessage?
+    @State private var usesPeriod = false
+    @State private var fromDate = Calendar.current.dateInterval(of: .month, for: .now)?.start ?? .now
+    @State private var throughDate = Date.now
+    @State private var excludedIDs = Set<UUID>()
+
+    private var eligibleInvoices: [InvoiceRecord] {
+        AccountingExportSelection.invoices(invoices, from: usesPeriod ? fromDate : nil, through: usesPeriod ? throughDate : nil)
+    }
+    private var selectedInvoices: [InvoiceRecord] { eligibleInvoices.filter { !excludedIDs.contains($0.id) } }
+    private var summary: AccountingExportSummary? { try? AccountingExportSelection.summary(selectedInvoices) }
+    private var invalidPeriod: Bool { usesPeriod && Calendar.current.startOfDay(for: fromDate) > Calendar.current.startOfDay(for: throughDate) }
+    private var canExport: Bool { !invalidPeriod && !selectedInvoices.isEmpty && summary != nil }
+
+    private func selection(for invoice: InvoiceRecord) -> Binding<Bool> {
+        Binding(get: { !excludedIDs.contains(invoice.id) }, set: { included in
+            if included { excludedIDs.remove(invoice.id) } else { excludedIDs.insert(invoice.id) }
+        })
+    }
 
     var body: some View {
         NavigationStack {
             List {
+                Section("Choose period") {
+                    Toggle("Limit by invoice date", isOn: $usesPeriod)
+                    if usesPeriod {
+                        DatePicker("From date", selection: $fromDate, displayedComponents: .date)
+                        DatePicker("Through date", selection: $throughDate, displayedComponents: .date)
+                        if invalidPeriod { Text("The from date must not be later than the through date.").foregroundStyle(.red) }
+                    }
+                    Text("The period includes both dates and uses the invoice issue date. Invoices outside the period are not exported.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                Section("Choose invoices") {
+                    Button("Select all in view") { excludedIDs.subtract(eligibleInvoices.map(\.id)) }
+                        .disabled(eligibleInvoices.isEmpty)
+                    Button("Deselect all in view") { excludedIDs.formUnion(eligibleInvoices.map(\.id)) }
+                        .disabled(eligibleInvoices.isEmpty)
+                    ForEach(eligibleInvoices) { invoice in
+                        Toggle(isOn: selection(for: invoice)) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Invoice \(invoice.invoiceNumber)").font(.headline)
+                                Text(invoice.issuedAt, format: .dateTime.day().month().year())
+                                if let snapshot = invoice.snapshot {
+                                    Text(snapshot.customerName)
+                                    Text(PriceEstimateCalculator.currency(snapshot.total, locale: locale))
+                                } else {
+                                    Text("The stored invoice could not be read.").foregroundStyle(.red)
+                                }
+                            }
+                        }
+                    }
+                    if eligibleInvoices.isEmpty && !invalidPeriod { Text("No ordinary invoices match this period.") }
+                }
+                Section("Check selection") {
+                    LabeledContent("Invoices in view", value: "\(eligibleInvoices.count)")
+                    if let summary {
+                        LabeledContent("Selected invoices", value: "\(summary.invoices)")
+                        LabeledContent("Invoice lines", value: "\(summary.lines)")
+                        LabeledContent("Subtotal excluding VAT", value: PriceEstimateCalculator.currency(summary.subtotal, locale: locale))
+                        LabeledContent("VAT", value: PriceEstimateCalculator.currency(summary.vat, locale: locale))
+                        LabeledContent("Total", value: PriceEstimateCalculator.currency(summary.total, locale: locale)).font(.headline)
+                    } else {
+                        Text("A selected invoice could not be read. Deselect it or restore a valid copy before exporting.").foregroundStyle(.red)
+                    }
+                    Text("Exercise invoices are excluded from ordinary accounting export.").font(.footnote).foregroundStyle(.secondary)
+                }
                 Section("Export to accounting") {
                     Button("Export CSV file", systemImage: "square.and.arrow.up", action: prepareExport)
-                        .disabled(invoices.isEmpty)
+                        .disabled(!canExport)
                     Button("Accounting report (PDF)", systemImage: "doc.richtext", action: preparePDFReport)
-                        .disabled(invoices.isEmpty)
+                        .disabled(!canExport)
 
                     Text("The CSV file contains one row per invoice line with invoice, customer, amount, and VAT information. The receiving accounting system may require the columns to be mapped during import.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Ready for transfer") {
-                    LabeledContent("Approved invoices", value: "\(invoices.count)")
+                Section("CSV format") {
+                    Text("One row per invoice line. Sum line_subtotal, line_vat and line_total for line amounts. invoice_subtotal, invoice_vat and invoice_total repeat on every line and must be counted only once per invoice_number.")
+                        .font(.footnote)
+                    Text("Export creates a file. It does not confirm import or bookkeeping in an accounting system.")
+                        .font(.footnote).foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Export to accounting")
@@ -106,9 +171,10 @@ struct AccountingTransferView: View {
     }
 
     private func prepareExport() {
+        guard canExport else { return }
         do {
             csvExportItem = AccountingCSVTransferItem(
-                data: try AccountingCSVExportService().exportData(invoices: invoices)
+                data: try AccountingCSVExportService().exportData(invoices: selectedInvoices)
             )
             isExportingCSV = true
         } catch {
@@ -120,9 +186,10 @@ struct AccountingTransferView: View {
     }
 
     private func preparePDFReport() {
+        guard canExport else { return }
         do {
             pdfExportItem = AccountingPDFTransferItem(
-                data: try AccountingReportPDFService().exportData(invoices: invoices, locale: locale)
+                data: try AccountingReportPDFService().exportData(invoices: selectedInvoices, locale: locale)
             )
             isExportingPDF = true
         } catch {

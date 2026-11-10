@@ -234,6 +234,12 @@ public enum CoreTestSupport {
         context.insert(customer)
         context.insert(job)
         context.insert(secondJob)
+        let firstWork = WorkEntry(workDate: .now, details: "Registered work", durationMinutes: 120, job: job)
+        let secondWork = WorkEntry(workDate: .now, details: "Registered work", durationMinutes: 60, job: secondJob)
+        context.insert(firstWork)
+        context.insert(secondWork)
+        job.workEntries.append(firstWork)
+        secondJob.workEntries.append(secondWork)
         let first = try SalesDocumentService.issueInvoice(
             job: job, company: company, dueDate: .now.addingTimeInterval(14 * 86_400), in: context
         )

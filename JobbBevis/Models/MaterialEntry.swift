@@ -68,13 +68,20 @@ enum MaterialUnit: String, CaseIterable, Identifiable {
 final class MaterialEntry {
     @Attribute(.unique) var id: UUID
     var name: String
+    var itemNumber: String?
     var quantity: Decimal
     var unit: String
     var note: String
     var createdAt: Date
     var updatedAt: Date
     var unitPrice: Decimal?
+    var sourcePurchaseItemID: UUID?
     var job: JobRecord
+
+    var displayName: String {
+        let number = itemNumber?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return number.isEmpty ? name : "\(number) · \(name)"
+    }
 
     init(
         id: UUID = UUID(),
@@ -85,16 +92,20 @@ final class MaterialEntry {
         createdAt: Date = .now,
         updatedAt: Date = .now,
         job: JobRecord,
-        unitPrice: Decimal? = nil
+        unitPrice: Decimal? = nil,
+        sourcePurchaseItemID: UUID? = nil,
+        itemNumber: String? = nil
     ) {
         self.id = id
         self.name = name
+        self.itemNumber = itemNumber
         self.quantity = quantity
         self.unit = unit
         self.note = note
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.unitPrice = unitPrice
+        self.sourcePurchaseItemID = sourcePurchaseItemID
         self.job = job
     }
 }

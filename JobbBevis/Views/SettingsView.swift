@@ -55,7 +55,13 @@ struct SettingsView: View {
 
             NumberValidationSettingsSection(isEnabled: $validatesNorwegianNumbers)
 
-            BackupSectionView()
+            Section("Backup") {
+                NavigationLink {
+                    BackupSectionView()
+                } label: {
+                    Label("Backup", systemImage: "externaldrive")
+                }
+            }
 
             Section {
                 Button("Delete all data", systemImage: "trash", role: .destructive) {

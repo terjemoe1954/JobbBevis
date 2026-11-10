@@ -1,0 +1,39 @@
+REGISTERIMPORT OG BRUKERHJELP – 9. NOVEMBER 2026
+
+Inkludert i 1.0.2 (8), arkivert og lastet opp til TestFlight 9. november 2026.
+Koblet til Internal. Ekstern innsending venter på godkjenning av build 7.
+
+Innstillinger > Backup:
+- Velg Gjenopprett full backup eller Start på nytt med registre før filvalg.
+- Egen bekreftelsesskjerm: forklaring og erstatningsvalg øverst, importknapp
+  i topplinjen. Ingen endring før brukeren bekrefter og trykker importer.
+- Tilbud om eksport av dagens data; valgt backup beholdes ved retur.
+- Registerimport erstatter kunder, leverandører og varer med backupens registre.
+  Varer beholder varenummer, pris, mengde, enhet og kobling til leverandør.
+- Eksisterende oppdrag, arbeidslogg, forbruk, innkjøpslister, bilder,
+  prosjektdetaljer og fakturautkast fjernes. Ingen slike data eller fakturaer
+  importeres fra backupen.
+- Lokale firmaopplysninger, logo og nummerserier beholdes. Allerede utstedte
+  fakturaer og kreditnotaer på enheten beholdes uendret, som ved full restore.
+- Filen valideres før endring. Eksisterende restore-transaksjon og tilbakeføring
+  ved filfeil brukes også for registerimport. Ingen endring av backupformatet.
+
+Hjelp > Steg for steg: oppussing av kjøkken:
+12 sammenhengende trinn uten kontrollpunkter, på norsk og engelsk: firma og
+registre, oppdrag, prisoverslag/anbud, bilder, arbeid, delvis materialforbruk,
+fullføring, rapportdeling, faktura og backup. 38 timer à 800 kr og 19 350 kr
+i materialer gir 62 187,50 kr inkl. MVA.
+
+Verifikasjon:
+- macOS arm64-build uten signering bestått.
+- Isolerte integrasjonstester for registerimport, leverandørkobling, gjentatt
+  import, tomme registre, beholdte firmadata/nummerserier, uforanderlige lokale
+  fakturaer/kreditnotaer og utelatte fakturaer fra backupen.
+- Full restore, ugyldig importfil, eksisterende funksjoner og migrering fra
+  opprinnelig datamodell testes i verification/run_release_checks.py.
+- Ingen import er utført i brukerens database. Praktisk test av den nye
+  importskjermen på iPhone og Mac gjenstår til neste installerte build.
+
+Brukeren bekreftet at iPhone-runden på build 7 fungerer: kamera, endring av
+bildetekst/kategori, valg fra bibliotek, sletting, PDF i Filer, deling og
+bevarte data etter omstart. Dette er skilt fra de nye importendringene.

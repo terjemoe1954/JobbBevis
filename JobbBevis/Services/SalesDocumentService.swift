@@ -11,6 +11,8 @@ enum SalesDocumentError: LocalizedError {
     case invoiceAlreadyIssued
     case invalidOrganizationNumber
     case invalidBankAccount
+    case datesNeedReview
+    case acceptedBidAlreadyRecorded
     case creditNoteAlreadyIssued
 
     var errorDescription: String? {
@@ -31,6 +33,10 @@ enum SalesDocumentError: LocalizedError {
             String(localized: "The organization number is not valid. Check it in Settings.")
         case .invalidBankAccount:
             String(localized: "The bank account number is not valid. Check it in Settings.")
+        case .datesNeedReview:
+            String(localized: "Review the date warnings before issuing the invoice.")
+        case .acceptedBidAlreadyRecorded:
+            String(localized: "An accepted bid is already recorded for this job.")
         case .creditNoteAlreadyIssued:
             String(localized: "This invoice has already been fully credited.")
         }
@@ -47,8 +53,12 @@ enum SalesDocumentService {
     static func snapshot(
         job: JobRecord,
         company: CompanyProfile,
-        basis: Basis = .registered
+        basis: Basis = .registered,
+        locale: Locale = .autoupdatingCurrent
     ) throws -> SalesDocumentSnapshot {
+        func localized(_ resource: String.LocalizationValue) -> String {
+            String(localized: LocalizedStringResource(resource, locale: locale))
+        }
         let companyName = company.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let organizationNumber = company.organizationNumber.trimmingCharacters(in: .whitespacesAndNewlines)
         let companyAddress = company.address.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -85,8 +95,8 @@ enum SalesDocumentService {
             : PriceEstimateCalculator.registeredHours(for: job)
         if let rate = job.hourlyRate, hours > 0, rate >= 0 {
             lines.append(SalesDocumentLine(
-                id: UUID(), description: String(localized: "Work"), quantity: hours,
-                unit: String(localized: "hours"), unitPrice: rate, vatRatePercent: vatRate
+                id: UUID(), description: localized("Work"), quantity: hours,
+                unit: localized("hours"), unitPrice: rate, vatRatePercent: vatRate
             ))
         }
         if basis == .estimate {
@@ -94,16 +104,40 @@ enum SalesDocumentService {
                 guard item.quantity > 0, item.unitPrice >= 0 else { continue }
                 lines.append(SalesDocumentLine(
                     id: UUID(), description: item.itemName, quantity: item.quantity,
-                    unit: item.unit, unitPrice: item.unitPrice, vatRatePercent: vatRate
+                    unit: item.unit, unitPrice: item.unitPrice, vatRatePercent: vatRate, itemNumber: item.itemNumber
                 ))
             }
         } else {
+            struct GroupKey: Hashable {
+                let sourceID: UUID
+                let itemNumber: String?
+                let name: String
+                let unit: String
+                let price: Decimal
+                let vat: Decimal
+            }
+            var groups: [GroupKey: Int] = [:]
             for material in job.materialEntries.sorted(by: { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) {
                 guard let price = material.unitPrice, material.quantity > 0, price >= 0 else { continue }
-                lines.append(SalesDocumentLine(
-                    id: UUID(), description: material.name, quantity: material.quantity,
-                    unit: material.unit, unitPrice: price, vatRatePercent: vatRate
-                ))
+                let sourceID = material.sourcePurchaseItemID ?? job.purchaseItems.first(where: { $0.transferredMaterialID == material.id })?.id
+                let key = sourceID.map { GroupKey(sourceID: $0, itemNumber: material.itemNumber, name: material.name, unit: material.unit, price: price, vat: vatRate) }
+                if job.combinesInvoiceLines, let key, let index = groups[key] {
+                    let existing = lines[index]
+                    lines[index] = SalesDocumentLine(
+                        id: existing.id, description: existing.description,
+                        quantity: existing.quantity + material.quantity, unit: existing.unit,
+                        unitPrice: existing.unitPrice, vatRatePercent: existing.vatRatePercent,
+                        itemNumber: existing.itemNumber,
+                        sourceMaterialIDs: (existing.sourceMaterialIDs ?? []) + [material.id]
+                    )
+                } else {
+                    if job.combinesInvoiceLines, let key { groups[key] = lines.count }
+                    lines.append(SalesDocumentLine(
+                        id: UUID(), description: material.name, quantity: material.quantity,
+                        unit: material.unit, unitPrice: price, vatRatePercent: vatRate,
+                        itemNumber: material.itemNumber, sourceMaterialIDs: [material.id]
+                    ))
+                }
             }
         }
         let kilometers = basis == .estimate
@@ -111,7 +145,7 @@ enum SalesDocumentService {
             : PriceEstimateCalculator.registeredKilometers(for: job)
         if let rate = job.drivingRatePerKilometer, kilometers > 0, rate >= 0 {
             lines.append(SalesDocumentLine(
-                id: UUID(), description: String(localized: "Driving"), quantity: kilometers,
+                id: UUID(), description: localized("Driving"), quantity: kilometers,
                 unit: "km", unitPrice: rate, vatRatePercent: vatRate
             ))
         }
@@ -136,14 +170,32 @@ enum SalesDocumentService {
             deliveryAddress: job.workAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? customerAddress
                 : job.workAddress,
-            lines: lines
+            lines: lines,
+            exerciseMode: job.isExercise ? true : nil
         )
+    }
+
+    static func recordAcceptedBid(_ snapshot: SalesDocumentSnapshot, for job: JobRecord, at date: Date = .now, in context: ModelContext) throws {
+        guard job.acceptedBidSnapshotData == nil else { throw SalesDocumentError.acceptedBidAlreadyRecorded }
+        let data = try JSONEncoder().encode(snapshot)
+        job.acceptedBidSnapshotData = data
+        job.acceptedBidAt = date
+        job.updatedAt = .now
+        do { try context.save() } catch { context.rollback(); throw error }
+    }
+
+    static func nextSequence(after numbers: Set<String>, exercise: Bool) -> Int {
+        numbers.filter { $0.hasPrefix("TEST-") == exercise }.compactMap {
+            $0.split(separator: "-").last.flatMap { Int($0) }
+        }.max().map { $0 + 1 } ?? 1
     }
 
     static func issueInvoice(
         job: JobRecord,
         company: CompanyProfile,
         dueDate: Date,
+        datesAcknowledged: Bool = false,
+        locale: Locale = .autoupdatingCurrent,
         in context: ModelContext
     ) throws -> InvoiceRecord {
         let jobID = job.id
@@ -154,23 +206,26 @@ enum SalesDocumentService {
         guard try context.fetch(existingInvoiceDescriptor).isEmpty else {
             throw SalesDocumentError.invoiceAlreadyIssued
         }
+        guard datesAcknowledged || JobDateValidation.issues(for: job, dueDate: dueDate, checksDelivery: true).isEmpty else {
+            throw SalesDocumentError.datesNeedReview
+        }
         let bankAccount = (company.bankAccount ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !bankAccount.isEmpty else {
+        guard job.isExercise || !bankAccount.isEmpty else {
             throw SalesDocumentError.missingBankAccount
         }
-        guard !NumberValidationPreference.isEnabled
+        guard job.isExercise || !NumberValidationPreference.isEnabled
                 || NorwegianNumberValidator.bankAccountDigits(from: bankAccount) != nil else {
             throw SalesDocumentError.invalidBankAccount
         }
-        let snapshot = try snapshot(job: job, company: company)
+        let snapshot = try snapshot(job: job, company: company, locale: locale)
         var descriptor = FetchDescriptor<AppMetadata>(predicate: #Predicate { $0.id == "main" })
         descriptor.fetchLimit = 1
         let existingMetadata = try context.fetch(descriptor).first
         let metadata = existingMetadata ?? AppMetadata()
         if existingMetadata == nil { context.insert(metadata) }
-        let sequence = metadata.nextInvoiceSequence ?? 1
+        let sequence = job.isExercise ? (metadata.nextExerciseInvoiceSequence ?? 1) : (metadata.nextInvoiceSequence ?? 1)
         let year = Calendar.current.component(.year, from: .now)
-        let number = "\(year)-\(String(format: "%05d", sequence))"
+        let number = (job.isExercise ? "TEST-" : "") + "\(year)-\(String(format: "%05d", sequence))"
         let data = try JSONEncoder().encode(snapshot)
         let invoice = InvoiceRecord(
             invoiceNumber: number,
@@ -181,7 +236,8 @@ enum SalesDocumentService {
             snapshotData: data
         )
         context.insert(invoice)
-        metadata.nextInvoiceSequence = sequence + 1
+        if job.isExercise { metadata.nextExerciseInvoiceSequence = sequence + 1 }
+        else { metadata.nextInvoiceSequence = sequence + 1 }
         job.hasInvoiceDraft = false
         do {
             try context.save()
@@ -213,9 +269,9 @@ enum SalesDocumentService {
         let existingMetadata = try context.fetch(metadataDescriptor).first
         let metadata = existingMetadata ?? AppMetadata()
         if existingMetadata == nil { context.insert(metadata) }
-        let sequence = metadata.nextCreditNoteSequence ?? 1
+        let sequence = invoice.isExercise ? (metadata.nextExerciseCreditNoteSequence ?? 1) : (metadata.nextCreditNoteSequence ?? 1)
         let year = Calendar.current.component(.year, from: .now)
-        let number = "KN-\(year)-\(String(format: "%05d", sequence))"
+        let number = (invoice.isExercise ? "TEST-" : "") + "KN-\(year)-\(String(format: "%05d", sequence))"
         let creditNote = CreditNoteRecord(
             creditNoteNumber: number,
             originalInvoiceID: invoice.id,
@@ -225,7 +281,8 @@ enum SalesDocumentService {
             snapshotData: invoice.snapshotData
         )
         context.insert(creditNote)
-        metadata.nextCreditNoteSequence = sequence + 1
+        if invoice.isExercise { metadata.nextExerciseCreditNoteSequence = sequence + 1 }
+        else { metadata.nextCreditNoteSequence = sequence + 1 }
         do {
             try context.save()
             return creditNote
@@ -239,7 +296,9 @@ enum SalesDocumentService {
 struct SalesDocumentPDFService {
     enum Kind {
         case bid
+        case acceptedBid(acceptedAt: Date)
         case orderConfirmation
+        case invoiceDraft(dueDate: Date)
         case invoice(number: String, issuedAt: Date, dueDate: Date, isCopy: Bool)
         case creditNote(number: String, issuedAt: Date, originalInvoiceNumber: String)
     }
@@ -250,8 +309,17 @@ struct SalesDocumentPDFService {
         let renderer = UIGraphicsPDFRenderer(bounds: page)
         let url = try outputURL(snapshot: snapshot, kind: kind)
         try renderer.writePDF(to: url) { context in
-            context.beginPage()
             var y = margin
+            func beginPage() {
+                context.beginPage()
+                y = margin
+                if snapshot.exerciseMode == true {
+                    let notice = String(localized: LocalizedStringResource("EXERCISE - DO NOT PAY", locale: locale))
+                    (notice as NSString).draw(in: CGRect(x: margin, y: y, width: page.width - margin * 2, height: 24), withAttributes: [.font: UIFont.boldSystemFont(ofSize: 13), .foregroundColor: UIColor.systemRed])
+                    y += 30
+                }
+            }
+            beginPage()
             func text(_ value: String, font: UIFont, color: UIColor = .black, gap: CGFloat = 5) {
                 let rect = CGRect(x: margin, y: y, width: page.width - margin * 2, height: 100)
                 let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
@@ -287,13 +355,18 @@ struct SalesDocumentPDFService {
             let title: String
             switch kind {
             case .bid: title = localized("Bid")
+            case .acceptedBid: title = localized("Accepted bid")
             case .orderConfirmation: title = localized("Order confirmation")
+            case .invoiceDraft: title = localized("Invoice draft")
             case let .invoice(_, _, _, isCopy):
                 title = isCopy ? localized("Invoice copy") : localized("Invoice")
             case .creditNote:
                 title = localized("Credit note")
             }
             text(title, font: .boldSystemFont(ofSize: 26), gap: 14)
+            if case .invoiceDraft = kind {
+                text(localized("DRAFT - Not issued. No invoice number assigned."), font: .boldSystemFont(ofSize: 11), color: .darkGray, gap: 12)
+            }
             text(snapshot.sellerName, font: .boldSystemFont(ofSize: 13))
             var organization = localized("Org. no.") + ": " + snapshot.sellerOrganizationNumber
             if snapshot.sellerIsVATRegistered { organization += " MVA" }
@@ -311,10 +384,14 @@ struct SalesDocumentPDFService {
                 text(localized("Invoice number") + ": " + number, font: .boldSystemFont(ofSize: 11))
                 text(localized("Invoice date") + ": " + issuedAt.formatted(.dateTime.day().month().year().locale(locale)), font: .systemFont(ofSize: 10))
                 text(localized("Due date") + ": " + dueDate.formatted(.dateTime.day().month().year().locale(locale)), font: .systemFont(ofSize: 10))
+            } else if case let .invoiceDraft(dueDate) = kind {
+                text(localized("Due date") + ": " + dueDate.formatted(.dateTime.day().month().year().locale(locale)), font: .systemFont(ofSize: 10))
             } else if case let .creditNote(number, issuedAt, originalInvoiceNumber) = kind {
                 text(localized("Credit note number") + ": " + number, font: .boldSystemFont(ofSize: 11))
                 text(localized("Credit note date") + ": " + issuedAt.formatted(.dateTime.day().month().year().locale(locale)), font: .systemFont(ofSize: 10))
                 text(localized("Credits invoice") + ": " + originalInvoiceNumber, font: .systemFont(ofSize: 10))
+            } else if case let .acceptedBid(acceptedAt) = kind {
+                text(localized("Accepted on") + ": " + acceptedAt.formatted(.dateTime.day().month().year().locale(locale)), font: .systemFont(ofSize: 10))
             } else {
                 text(localized("Date") + ": " + Date.now.formatted(.dateTime.day().month().year().locale(locale)), font: .systemFont(ofSize: 10))
             }
@@ -329,8 +406,10 @@ struct SalesDocumentPDFService {
             text(localized("Delivery address") + ": " + snapshot.deliveryAddress, font: .systemFont(ofSize: 10), gap: 14)
 
             for line in snapshot.lines {
-                if y > page.height - 150 { context.beginPage(); y = margin }
-                text(line.description, font: .boldSystemFont(ofSize: 10), gap: 2)
+                if y > page.height - 150 { beginPage() }
+                let number = line.itemNumber?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let title = number.isEmpty ? line.description : "\(number) · \(line.description)"
+                text(title, font: .boldSystemFont(ofSize: 10), gap: 2)
                 let quantity = EntryFormatting.formatDecimal(line.quantity, locale: locale)
                 let vat = EntryFormatting.formatDecimal(line.vatRatePercent, locale: locale)
                 let lineSubtotal = isCreditNote(kind) ? -line.subtotal : line.subtotal
@@ -342,21 +421,33 @@ struct SalesDocumentPDFService {
             text(localized("Subtotal excluding VAT") + ": " + money(snapshot.subtotal * sign), font: .systemFont(ofSize: 11))
             text(localized("VAT") + ": " + money(snapshot.vat * sign), font: .systemFont(ofSize: 11))
             text(localized("Total") + ": " + money(snapshot.total * sign), font: .boldSystemFont(ofSize: 14), gap: 12)
-            if case .invoice = kind {
-                text(localized("Bank account") + ": " + snapshot.sellerBankAccount, font: .boldSystemFont(ofSize: 11))
+            switch kind {
+            case .invoice, .invoiceDraft:
+                let account = snapshot.sellerBankAccount.isEmpty ? localized("Not specified") : snapshot.sellerBankAccount
+                if snapshot.exerciseMode != true {
+                    text(localized("Bank account") + ": " + account, font: .boldSystemFont(ofSize: 11))
+                }
+            default: break
             }
         }
         return url
     }
 
     private func outputURL(snapshot: SalesDocumentSnapshot, kind: Kind) throws -> URL {
+        if case .invoiceDraft = kind {
+            let directory = FileManager.default.temporaryDirectory.appending(path: "JobbBevis-Drafts", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            return directory.appending(path: "Fakturautkast-\(snapshot.jobNumber)-\(UUID().uuidString.prefix(8)).pdf")
+        }
         let support = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
         let directory = support.appending(path: "JobbBevis/Exports", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let prefix: String
             switch kind {
             case .bid: prefix = "Anbud-\(snapshot.jobNumber)"
+            case .acceptedBid: prefix = "Akseptert-anbud-\(snapshot.jobNumber)"
             case .orderConfirmation: prefix = "Ordrebekreftelse-\(snapshot.jobNumber)"
+        case .invoiceDraft: prefix = "Fakturautkast-\(snapshot.jobNumber)"
         case let .invoice(number, _, _, isCopy):
             prefix = isCopy ? "Fakturakopi-\(number)" : "Faktura-\(number)"
         case let .creditNote(number, _, _):

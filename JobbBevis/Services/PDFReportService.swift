@@ -7,6 +7,7 @@ struct ReportOptions {
     var includesWorkLog = true
     var includesMaterials = true
     var includesPriceEstimate = true
+    var showsPrices = false
 }
 
 @MainActor
@@ -35,45 +36,16 @@ struct PDFReportService {
             var y = margin
 
             func localized(_ key: String) -> String {
-                switch key {
-                case "Planned": String(localized: LocalizedStringResource("Planned", locale: locale))
-                case "In progress": String(localized: LocalizedStringResource("In progress", locale: locale))
-                case "Completed": String(localized: LocalizedStringResource("Completed", locale: locale))
-                case "Before": String(localized: LocalizedStringResource("Before", locale: locale))
-                case "During": String(localized: LocalizedStringResource("During", locale: locale))
-                case "After": String(localized: LocalizedStringResource("After", locale: locale))
-                case "pcs": String(localized: LocalizedStringResource("pcs", locale: locale))
-                case "m": String(localized: LocalizedStringResource("m", locale: locale))
-                case "m²": String(localized: LocalizedStringResource("m²", locale: locale))
-                case "m³": String(localized: LocalizedStringResource("m³", locale: locale))
-                case "l": String(localized: LocalizedStringResource("l", locale: locale))
-                case "kg": String(localized: LocalizedStringResource("kg", locale: locale))
-                case "package": String(localized: LocalizedStringResource("package", locale: locale))
-                case "Job report": String(localized: LocalizedStringResource("Job report", locale: locale))
-                case "Report date": String(localized: LocalizedStringResource("Report date", locale: locale))
-                case "Job number": String(localized: LocalizedStringResource("Job number", locale: locale))
-                case "Status": String(localized: LocalizedStringResource("Status", locale: locale))
-                case "Customer": String(localized: LocalizedStringResource("Customer", locale: locale))
-                case "Work address": String(localized: LocalizedStringResource("Work address", locale: locale))
-                case "Planned date": String(localized: LocalizedStringResource("Planned date", locale: locale))
-                case "Completed date": String(localized: LocalizedStringResource("Completed date", locale: locale))
-                case "Description": String(localized: LocalizedStringResource("Description", locale: locale))
-                case "Work log": String(localized: LocalizedStringResource("Work log", locale: locale))
-                case "Total time": String(localized: LocalizedStringResource("Total time", locale: locale))
-                case "Materials": String(localized: LocalizedStringResource("Materials", locale: locale))
-                case "Photos": String(localized: LocalizedStringResource("Photos", locale: locale))
-                case "Image unavailable": String(localized: LocalizedStringResource("Image unavailable", locale: locale))
-                case "Registered": String(localized: LocalizedStringResource("Registered", locale: locale))
-                case "Sample data – not a real customer or job": String(localized: LocalizedStringResource("Sample data – not a real customer or job", locale: locale))
-                case "Price estimate": String(localized: LocalizedStringResource("Price estimate", locale: locale))
-                case "Labor": String(localized: LocalizedStringResource("Labor", locale: locale))
-                case "Driving": String(localized: LocalizedStringResource("Driving", locale: locale))
-                case "Subtotal excluding VAT": String(localized: LocalizedStringResource("Subtotal excluding VAT", locale: locale))
-                case "VAT": String(localized: LocalizedStringResource("VAT", locale: locale))
-                case "Suggested total price": String(localized: LocalizedStringResource("Suggested total price", locale: locale))
-                case "This is a non-binding price estimate, not an invoice or payment request.": String(localized: LocalizedStringResource("This is a non-binding price estimate, not an invoice or payment request.", locale: locale))
-                default: key
-                }
+                String(localized: LocalizedStringResource(String.LocalizationValue(stringLiteral: key), locale: locale))
+            }
+
+            func duration(_ minutes: Int) -> String {
+                let value = max(0, minutes)
+                let hours = value / 60
+                let remainder = value % 60
+                if hours == 0 { return "\(remainder) min" }
+                let hourLabel = localized("h")
+                return remainder == 0 ? "\(hours) \(hourLabel)" : "\(hours) \(hourLabel) \(remainder) min"
             }
 
             func localizedStatus(_ status: JobStatus) -> String {
@@ -103,7 +75,7 @@ struct PDFReportService {
                 case .liter: localized("l")
                 case .kilogram: localized("kg")
                 case .hour: localized("h")
-                case .package: localized("pkg")
+                case .package: localized("package")
                 case .bucket: localized("spann")
                 case .box: localized("eske")
                 case .set: localized("sett")
@@ -133,6 +105,10 @@ struct PDFReportService {
                 context.beginPage()
                 pageNumber += 1
                 y = margin
+                if job.isExercise {
+                    draw(localized("EXERCISE - DO NOT PAY"), in: CGRect(x: margin, y: y, width: pageRect.width - margin * 2, height: 24), font: .boldSystemFont(ofSize: 13), color: .systemRed)
+                    y += 30
+                }
             }
 
             func ensureSpace(_ height: CGFloat) {
@@ -151,7 +127,7 @@ struct PDFReportService {
                 guard !text.isEmpty else { return }
                 let width = pageRect.width - margin * 2
                 let fullHeight = textHeight(text, width: width, font: font)
-                let usableHeight = pageRect.height - margin * 2 - footerHeight
+                let usableHeight = pageRect.height - margin * 2 - footerHeight - (job.isExercise ? 30 : 0) - spacingAfter
 
                 if fullHeight <= usableHeight {
                     ensureSpace(fullHeight + spacingAfter)
@@ -181,8 +157,8 @@ struct PDFReportService {
                 }
             }
 
-            func addSectionTitle(_ title: String) {
-                ensureSpace(34)
+            func addSectionTitle(_ title: String, minimumSpace: CGFloat = 34) {
+                ensureSpace(minimumSpace)
                 y += 10
                 addText(title, font: .boldSystemFont(ofSize: 16), spacingAfter: 7)
             }
@@ -251,10 +227,10 @@ struct PDFReportService {
             }
 
             if options.includesWorkLog, !job.workEntries.isEmpty {
-                addSectionTitle(localized("Work log"))
+                addSectionTitle(localized("Work log"), minimumSpace: options.showsPrices ? 180 : 115)
                 let entries = job.workEntries.sorted { $0.workDate < $1.workDate }
                 for entry in entries {
-                    ensureSpace(54)
+                    ensureSpace(options.showsPrices ? 145 : 80)
                     addText(
                         entry.workDate.formatted(.dateTime.day().month().year().locale(locale)),
                         font: .boldSystemFont(ofSize: 11),
@@ -262,24 +238,39 @@ struct PDFReportService {
                     )
                     addText(entry.details, font: .systemFont(ofSize: 10), spacingAfter: 3)
                     addText(
-                        EntryFormatting.duration(totalMinutes: entry.durationMinutes),
+                        duration(entry.durationMinutes),
                         font: .systemFont(ofSize: 10),
                         color: .darkGray,
                         spacingAfter: 5
                     )
+                    if options.showsPrices {
+                        if let rate = job.hourlyRate {
+                            addLabeledValue(localized("Hourly rate excluding VAT"), value: PriceEstimateCalculator.currency(rate, locale: locale))
+                            let amount = Decimal(max(0, entry.durationMinutes)) / 60 * max(0, rate)
+                            addLabeledValue(localized("Work amount excluding VAT"), value: PriceEstimateCalculator.currency(amount, locale: locale))
+                        } else {
+                            addText(localized("No price registered"), font: .italicSystemFont(ofSize: 10), color: .darkGray)
+                        }
+                    }
+                    if let kilometers = entry.drivingKilometers, kilometers > 0 {
+                        addLabeledValue(localized("Driving"), value: EntryFormatting.formatDecimal(kilometers, locale: locale) + " km")
+                        if options.showsPrices, let rate = job.drivingRatePerKilometer {
+                            addLabeledValue(localized("Driving amount excluding VAT"), value: PriceEstimateCalculator.currency(kilometers * max(0, rate), locale: locale))
+                        }
+                    }
                     addDivider()
                 }
                 let total = job.workEntries.reduce(0) { $0 + $1.durationMinutes }
-                addLabeledValue(localized("Total time"), value: EntryFormatting.duration(totalMinutes: total))
+                addLabeledValue(localized("Total time"), value: duration(total))
             }
 
             if options.includesMaterials, !job.materialEntries.isEmpty {
-                addSectionTitle(localized("Materials"))
+                addSectionTitle(localized("Registered materials and purchased services"), minimumSpace: options.showsPrices ? 150 : 100)
                 let materials = job.materialEntries.sorted {
                     $0.name.localizedStandardCompare($1.name) == .orderedAscending
                 }
                 for material in materials {
-                    ensureSpace(46)
+                    ensureSpace(options.showsPrices ? 115 : 65)
                     let quantity = EntryFormatting.formatDecimal(material.quantity, locale: locale)
                     let unit: String
                     if let predefined = MaterialUnit(rawValue: material.unit) {
@@ -287,11 +278,16 @@ struct PDFReportService {
                     } else {
                         unit = material.unit
                     }
-                    addText(material.name, font: .boldSystemFont(ofSize: 11), spacingAfter: 3)
-                    let price = material.unitPrice.map {
-                        " · " + PriceEstimateCalculator.currency($0, locale: locale)
-                    } ?? ""
-                    addText("\(quantity) \(unit)\(price)", font: .systemFont(ofSize: 10), spacingAfter: 3)
+                    addText(material.displayName, font: .boldSystemFont(ofSize: 11), spacingAfter: 3)
+                    addText("\(quantity) \(unit)", font: .systemFont(ofSize: 10), spacingAfter: 3)
+                    if options.showsPrices {
+                        if let price = material.unitPrice {
+                            addLabeledValue(localized("Unit price excluding VAT"), value: PriceEstimateCalculator.currency(price, locale: locale))
+                            addLabeledValue(localized("Line total excluding VAT"), value: PriceEstimateCalculator.currency(material.quantity * price, locale: locale))
+                        } else {
+                            addText(localized("No price registered"), font: .italicSystemFont(ofSize: 10), color: .darkGray)
+                        }
+                    }
                     if !material.note.isEmpty {
                         addText(material.note, font: .systemFont(ofSize: 10), color: .darkGray, spacingAfter: 5)
                     }
@@ -299,24 +295,31 @@ struct PDFReportService {
                 }
             }
 
-            if options.includesPriceEstimate {
-                let estimate = PriceEstimateCalculator.estimate(for: job)
-                if estimate.subtotal > 0 {
-                    addSectionTitle(localized("Price estimate"))
-                    addLabeledValue(localized("Work"), value: PriceEstimateCalculator.currency(estimate.labor, locale: locale))
-                    addLabeledValue(localized("Materials"), value: PriceEstimateCalculator.currency(estimate.materials, locale: locale))
+            if options.showsPrices && options.includesMaterials && !job.materialEntries.isEmpty {
+                let materialsTotal = job.materialEntries.reduce(Decimal.zero) { $0 + $1.quantity * max(0, $1.unitPrice ?? 0) }
+                addLabeledValue(localized("Priced materials and services excluding VAT"), value: PriceEstimateCalculator.currency(materialsTotal, locale: locale))
+                if job.materialEntries.contains(where: { $0.unitPrice == nil }) {
+                    addText(localized("Unpriced entries are not included in monetary totals."), font: .italicSystemFont(ofSize: 9), color: .darkGray)
+                }
+            }
+
+            if options.showsPrices && options.includesPriceEstimate {
+                func summary(_ title: String, _ estimate: PriceEstimate) {
+                    ensureSpace(190)
+                    addSectionTitle(localized(title))
+                    addLabeledValue(localized("Own work"), value: PriceEstimateCalculator.currency(estimate.labor, locale: locale))
+                    addLabeledValue(localized("Materials and purchased services"), value: PriceEstimateCalculator.currency(estimate.materials, locale: locale))
                     addLabeledValue(localized("Driving"), value: PriceEstimateCalculator.currency(estimate.driving, locale: locale))
                     addLabeledValue(localized("Subtotal excluding VAT"), value: PriceEstimateCalculator.currency(estimate.subtotal, locale: locale))
-                    if job.vatRatePercent != nil {
-                        addLabeledValue(localized("VAT"), value: PriceEstimateCalculator.currency(estimate.vat, locale: locale))
-                    }
-                    addLabeledValue(localized("Suggested total price"), value: PriceEstimateCalculator.currency(estimate.total, locale: locale))
-                    addText(
-                        localized("This is a non-binding price estimate, not an invoice or payment request."),
-                        font: .italicSystemFont(ofSize: 9),
-                        color: .darkGray
-                    )
+                    addLabeledValue(localized("VAT"), value: PriceEstimateCalculator.currency(estimate.vat, locale: locale))
+                    addLabeledValue(localized("Total"), value: PriceEstimateCalculator.currency(estimate.total, locale: locale))
                 }
+                summary("Bid basis (planned)", PriceEstimateCalculator.summary(for: job, basis: .estimate, isVATRegistered: company?.isVATRegistered ?? false))
+                summary("Registered so far", PriceEstimateCalculator.summary(for: job, basis: .registered, isVATRegistered: company?.isVATRegistered ?? false))
+                if company?.isVATRegistered == true && job.vatRatePercent == nil {
+                    addText(localized("No VAT rate is registered. Totals must be checked."), font: .italicSystemFont(ofSize: 10), color: .darkGray)
+                }
+                addText(localized("This is a job report, not an invoice or payment request."), font: .italicSystemFont(ofSize: 9), color: .darkGray)
             }
 
             if options.includesPhotos, !photoData.isEmpty {

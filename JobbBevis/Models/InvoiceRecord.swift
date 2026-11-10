@@ -8,6 +8,8 @@ struct SalesDocumentLine: Codable, Equatable, Identifiable {
     let unit: String
     let unitPrice: Decimal
     let vatRatePercent: Decimal
+    var itemNumber: String? = nil
+    var sourceMaterialIDs: [UUID]? = nil
 
     var subtotal: Decimal { quantity * unitPrice }
     var vat: Decimal { subtotal * vatRatePercent / 100 }
@@ -31,6 +33,7 @@ struct SalesDocumentSnapshot: Codable, Equatable {
     let deliveryDate: Date
     let deliveryAddress: String
     let lines: [SalesDocumentLine]
+    var exerciseMode: Bool? = nil
 
     var subtotal: Decimal { lines.reduce(0) { $0 + $1.subtotal } }
     var vat: Decimal { lines.reduce(0) { $0 + $1.vat } }
@@ -64,6 +67,8 @@ final class InvoiceRecord {
         self.dueDate = dueDate
         self.snapshotData = snapshotData
     }
+
+    var isExercise: Bool { snapshot?.exerciseMode == true || invoiceNumber.hasPrefix("TEST-") }
 
     var snapshot: SalesDocumentSnapshot? {
         try? JSONDecoder().decode(SalesDocumentSnapshot.self, from: snapshotData)

@@ -1,0 +1,43 @@
+JOBBBEVIS 1.0.2 (8) – TESTFLIGHT
+
+NYTT SIDEN BUILD 7
+- Mengde brukt nå har fast etikett, synlig enhet, innrammet felt og forklaring.
+- Backupimport har valg mellom full gjenoppretting og ny start med registre.
+- Registerimport henter bare kunder, leverandører og varer fra valgt backup.
+  Eksisterende oppdrag med arbeid, forbruk, bilder og utkast fjernes.
+  Lokale firmaopplysninger, logo, nummerserier og utstedte dokumenter beholdes.
+- Egen bekreftelsesskjerm med erstatningsvalg øverst og fast importknapp.
+- Mulighet til å eksportere dagens data før import og fortsette med valgt fil.
+- Oppdatert hjelp på norsk og engelsk, med et 12-trinns kjøkkeneksempel.
+
+PRØV MED FIKTIVE DATA
+1. Lagre en backup av data du vil beholde før en importtest.
+2. Prøv delvis forbruk: 2 kg av 10 kg sparkel à 65 kr.
+3. Åpne Innstillinger > Hjelp > Steg for steg: oppussing av kjøkken.
+4. Velg registerimport og en øvelsesbackup. Se gjennom antall kunder,
+   leverandører og varer, og avbryt først uten å importere.
+5. På en øvelsesenhet: bekreft registerimport. Oppdrag skal være tomt;
+   varer og leverandørkoblinger skal finnes. Lokale firmaopplysninger og
+   utstedte dokumenter skal beholdes.
+6. Prøv også full gjenoppretting fra sikkerhetskopien.
+
+VERIFIKASJON FØR OPPLASTING
+Byggekontroll, signert iOS-arkiv, isolerte import-/funksjonstester og
+migrering fra opprinnelig datamodell bestått. Kildefiler kontrollert med
+SHA-256 mot arkivgrunnlaget. Ingen lokal brukerdataimport er utført.
+Ny importskjerm må prøves manuelt etter installasjon.
+
+DISTRIBUSJON
+Signert arkiv og opplasting bestått 9. november 2026.
+Apple har ferdigbehandlet pakken. Eksportinformasjon er lagret, og builden
+er koblet til Internal (1 tester). What to Test er fylt inn og lagret.
+App Store Connect build-ID: 0529c953-3d89-4b98-a20e-4e47dd318fb7.
+
+EKSTERN TESTING
+Apple viser: bare én build av versjon 1.0.2 kan sendes til Beta App Review
+om gangen. Build 7 står fortsatt Waiting for Review i External Beta.
+Build 8 er derfor ikke lagt til External Beta eller sendt til betavurdering.
+Build 7 sin vurdering er beholdt. Etter godkjenning kan build 8 legges til.
+Ingen nye testere eller offentlig lenke er opprettet.
+
+Skjermbekreftelse: /private/tmp/JobbBevis-1.0.2-8-TestFlight.png.

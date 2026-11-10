@@ -11,6 +11,7 @@ struct ReportBuilderView: View {
     @State private var includesWorkLog = true
     @State private var includesMaterials = true
     @State private var includesPriceEstimate = true
+    @State private var showsPrices = false
     @State private var isGenerating = false
     @State private var preview: ReportPreview?
     @State private var errorMessage: String?
@@ -18,11 +19,23 @@ struct ReportBuilderView: View {
     var body: some View {
         NavigationStack {
             Form {
+                if job.isExercise {
+                    Section { Text("EXERCISE - DO NOT PAY").foregroundStyle(.orange) }
+                }
+                let dateIssues = JobDateValidation.issues(for: job)
+                if !dateIssues.isEmpty {
+                    Section("Check dates") { ForEach(dateIssues) { Text($0.message).foregroundStyle(.orange) } }
+                }
                 Section("Include in report") {
                     Toggle("Photos", isOn: $includesPhotos)
                     Toggle("Work log", isOn: $includesWorkLog)
                     Toggle("Materials", isOn: $includesMaterials)
-                    Toggle("Price estimate", isOn: $includesPriceEstimate)
+                    Toggle("Show prices", isOn: $showsPrices)
+                    if showsPrices {
+                        Toggle("Include financial summary", isOn: $includesPriceEstimate)
+                    }
+                    Text("Show prices controls generated price fields. Text you wrote in descriptions, notes and captions is included unchanged.")
+                        .font(.footnote).foregroundStyle(.secondary)
                 }
 
                 Section {
@@ -41,14 +54,17 @@ struct ReportBuilderView: View {
                         value: "\(job.materialEntries.count)",
                         isIncluded: includesMaterials
                     )
-                    ReportSummaryRow(
-                        title: "Price estimate",
-                        value: PriceEstimateCalculator.currency(
-                            PriceEstimateCalculator.estimate(for: job).total,
-                            locale: locale
-                        ),
-                        isIncluded: includesPriceEstimate
-                    )
+                    if showsPrices && includesPriceEstimate {
+                        ReportSummaryRow(
+                            title: "Registered so far",
+                            value: PriceEstimateCalculator.currency(
+                                PriceEstimateCalculator.summary(for: job, basis: .registered, isVATRegistered: profiles.first?.isVATRegistered ?? false).total,
+                                locale: locale
+                            ),
+                            isIncluded: true
+                        )
+                    }
+
                 } header: {
                     Text("Report contents")
                 } footer: {
@@ -101,7 +117,8 @@ struct ReportBuilderView: View {
                     includesPhotos: includesPhotos,
                     includesWorkLog: includesWorkLog,
                     includesMaterials: includesMaterials,
-                    includesPriceEstimate: includesPriceEstimate
+                    includesPriceEstimate: includesPriceEstimate,
+                    showsPrices: showsPrices
                 ),
                 locale: locale
             )

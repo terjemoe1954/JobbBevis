@@ -1,0 +1,16 @@
+VALGFRI SAMLING AV FAKTURALINJER
+
+Valget ligger i fakturautkastet og er avslått som standard. Bare materialforbruk
+koblet til samme innkjøpslinje kan samles. Varenummer, nøyaktig navn, enhet,
+enhetspris og MVA må også være like. Like navn alene gir aldri sammenslåing.
+Gamle én-til-én-koblinger støttes. Ukoblede poster beholdes hver for seg.
+
+Fakturautkast, ny faktura og ordrebekreftelse med registrert grunnlag bruker
+valget. Råregistreringene endres ikke. Det låste snapshotet inneholder
+sourceMaterialIDs og varenummer for sporbarhet; tidligere fakturakopier endres
+ikke. Tilbudsgrunnlaget grupperes ikke. Lagring og backup bevarer valget;
+eldre data får det avslått.
+
+Samlet kontroll bestod for 2 + 8 kg, separate priser, forskjellige kilder,
+varenummer, navn og enheter, ukoblede linjer, bevart totalsum, lagrede
+kilde-ID-er og full backup/gjenoppretting.

@@ -1,0 +1,9 @@
+# Rapportvalg og lesbarhet
+
+Vis priser er et eget valg, avslått som standard. Det styrer alle genererte prisfelt i oppdragsrapporten: timepris, arbeidsbeløp, kjørebeløp, materialenhetspris, linjesum, materialbeløp og økonomisk oversikt. Brukerens egen fritekst beholdes uendret, og kan fortsatt inneholde beløp. Dette forklares ved rapportvalgene. Ta med økonomisk oversikt er et separat undervalg når priser vises.
+
+Med priser vises materialenhetspris og linjesum ekskl. MVA, eget samlet beløp for prisede materialer og tjenester, samt merking av poster uten pris. Eget arbeid og innkjøpte tjenester blandes ikke i arbeidsbeløpet. Rapportoverskriften sier registrerte materialer og innkjøpte tjenester. Økonomisk oversikt bruker planlagt tilbudsgrunnlag og faktisk registrert grunnlag separat, med firmaets MVA-status, og varsler manglende MVA-sats. Den gamle blandingen av estimerte timer og faktiske materialer er fjernet fra rapporten.
+
+Varenummer vises fra lagret jobbpost. Norske enheter og varighet lokaliseres med rapportens språk, inkludert t og pakke. Vanlige vareposter og seksjonsoverskrifter holdes sammen ved sideskift. Lange beskrivelser og stående/liggende bilder støttes fortsatt. Utstedte rapportfiler og fakturaer endres ikke. Valgfri samling av fakturalinjer er ikke del av denne rapportendringen.
+
+Kontrollert: Xcode-bygg og isolert kjøring med fiktive data og norsk ressursbundle. Tre rapportvarianter: uten priser (4 sider), med priser (5 sider), linjepriser uten økonomisk oversikt (5 sider). Test dekker skjulte prisfelt, riktig økonomisk sum, linjesummer for 2 og 8 kg, varenummer, poster uten pris, norske enheter, lange tekster og bilder i begge retninger. Alle 14 endelige PDF-sider rendret og visuelt kontrollert; en delt varepost funnet og rettet. Ingen brukerdata åpnet. Ikke installert eller sendt til TestFlight.

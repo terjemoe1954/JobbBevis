@@ -1,0 +1,34 @@
+JOBBBEVIS 1.0.2 (9) – IMPORTSKJERM
+
+Rettet etter tilbakemelding fra Mac/iPhone på build 8:
+Backup har egen skjerm fra Innstillinger. Etter filvalg vises Valgt backup.
+Trykk Se gjennom valgt backup for å åpne bekreftelsen. Ingen automatisk
+presentasjon mens filvelgeren lukkes. Eksport før import bruker onDismiss.
+Resultat og feil vises på backupskjermen. Erstatningsvalget beholdes.
+Manual og norsk vareetikett er oppdatert.
+
+Test med en fiktiv backup: velg fil, vent, åpne gjennomgang, vent, avbryt.
+Prøv eksport før import og åpne den samme gjennomgangen igjen.
+Ingen import skal skje før både erstatning er bekreftet og import valgt.
+
+Signert iOS-arkiv og opplasting bestått. Mac Catalyst-skjermtest kjørt i
+separat testapp med minnedatabase og tom testbackup. Filvelger, oversikt,
+bekreftelse, eksport, retur, gjenåpning og avbryt fungerte. Det ble ikke
+utført import mot brukerens data. Ny bekreftelse på iPhone gjenstår.
+
+DISTRIBUSJON
+Opplastet og ferdigbehandlet 9. november 2026. Ready to Submit, koblet
+til Internal (1 tester), testbeskrivelsen lagret.
+App Store Connect build-ID: 2bbd0105-1bc6-4d15-9a21-bb0a3c2bba83.
+Bekreftelse: /private/tmp/JobbBevis-1.0.2-9-TestFlight.png.
+Ekstern betavurdering for build 7 beholdes.
+
+BRUKERBEKREFTET 9. NOVEMBER 2026
+- Brukeren bekreftet stabil importskjerm på iPhone.
+- Mac-skjermbilder viser stabil bekreftelse for full backup og registerimport.
+- Registerimport utført av brukeren: 4 kunder, 4 leverandører, 8 varer,
+  oppdrag fjernet og utstedte fakturaer beholdt. Brukeren bekreftet resultatet.
+- Deretter full gjenoppretting utført av brukeren: begge oppdragene tilbake,
+  kjøkkenjobb med bilder, arbeidslogg og materialer bekreftet.
+- Apple-status kontrollert på nytt: build 7 Waiting for Review;
+  build 9 Ready to Submit i Internal. Ingen ekstern innsending av build 9.

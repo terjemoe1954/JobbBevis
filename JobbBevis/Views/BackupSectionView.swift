@@ -21,14 +21,42 @@ struct BackupSectionView: View {
     @State private var isExporting = false
     @State private var isImporting = false
     @State private var isReadingBackup = false
+    @State private var importMode: BackupImportMode = .full
+    @State private var showsConfirmation = false
+    @State private var exportsAfterConfirmationDismisses = false
     @State private var restoreCandidate: RestoreCandidate?
     @State private var message: BackupMessage?
 
     var body: some View {
-        Group {
+        Form {
+            if let message {
+                Section {
+                    Text(message.title).font(.headline)
+                    Text(message.text)
+                }
+            }
+            if let candidate = restoreCandidate {
+                Section("Selected backup") {
+                    LabeledContent("Customers", value: candidate.prepared.summary.customers.formatted())
+                    LabeledContent("Suppliers", value: candidate.prepared.summary.suppliers.formatted())
+                    LabeledContent("Products", value: candidate.prepared.summary.products.formatted())
+                    Text(candidate.mode.title)
+                    Button("Review selected backup") { showsConfirmation = true }
+                    Button("Cancel", role: .cancel, action: cancelRestore)
+                }
+            }
             Section("Backup") {
                 Button("Export backup", systemImage: "square.and.arrow.up", action: prepareExport)
-                Button("Restore backup", systemImage: "arrow.down.doc", action: { isImporting = true })
+                Picker("Import contents", selection: $importMode) {
+                    ForEach(BackupImportMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                Text(importMode == .full
+                    ? LocalizedStringResource("Restore all backup contents. Existing issued invoices and credit notes are retained.")
+                    : LocalizedStringResource("Import customers, suppliers and products only. Current jobs and their photos, work and drafts are removed. Company details, number sequences and issued documents on this device are retained."))
+                    .font(.footnote).foregroundStyle(.secondary)
+                Button("Choose backup file", systemImage: "arrow.down.doc", action: { restoreCandidate = nil; message = nil; isImporting = true })
 
                 if isReadingBackup {
                     HStack {
@@ -42,13 +70,18 @@ struct BackupSectionView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if let restoreCandidate {
+        }
+        .navigationTitle("Backup")
+        .sheet(isPresented: $showsConfirmation, onDismiss: confirmationDidDismiss) {
+            if let candidate = restoreCandidate {
                 RestoreConfirmationSection(
-                    summary: restoreCandidate.prepared.summary,
+                    summary: candidate.prepared.summary,
+                    mode: candidate.mode,
                     exportCurrent: prepareExportBeforeRestore,
-                    restore: { performRestore(restoreCandidate) },
+                    restore: { performRestore(candidate) },
                     cancel: cancelRestore
                 )
+                .interactiveDismissDisabled()
             }
         }
         .fileExporter(
@@ -77,12 +110,12 @@ struct BackupSectionView: View {
         ) { result in
             handleImportResult(result.map { $0.first })
         }
-        .alert(item: $message) { message in
-            Alert(
-                title: Text(message.title),
-                message: Text(message.text),
-                dismissButton: .default(Text("OK"))
-            )
+    }
+
+    private func confirmationDidDismiss() {
+        if exportsAfterConfirmationDismisses {
+            exportsAfterConfirmationDismisses = false
+            isExporting = true
         }
     }
 
@@ -104,11 +137,12 @@ struct BackupSectionView: View {
     }
 
     private func prepareExportBeforeRestore() {
-        restoreCandidate = nil
         do {
             exportItem = BackupTransferItem(data: try BackupService().exportData(from: modelContext))
-            isExporting = true
+            exportsAfterConfirmationDismisses = true
+            showsConfirmation = false
         } catch {
+            showsConfirmation = false
             message = BackupMessage(
                 title: String(localized: LocalizedStringResource("Could not export backup", locale: locale)),
                 text: localizedError(error)
@@ -134,7 +168,7 @@ struct BackupSectionView: View {
                 // callback returns, then work exclusively with the in-memory copy.
                 let data = try readImportedData(from: url)
                 let prepared = try BackupService().prepareImport(data: data)
-                restoreCandidate = RestoreCandidate(prepared: prepared)
+                restoreCandidate = RestoreCandidate(prepared: prepared, mode: importMode)
             } catch {
                 showImportError(error)
             }
@@ -152,30 +186,27 @@ struct BackupSectionView: View {
         )
     }
 
-    private func performRestore(_ restoreCandidate: RestoreCandidate) {
+    private func performRestore(_ candidate: RestoreCandidate) {
         do {
-            try BackupService().restore(restoreCandidate.prepared, into: modelContext)
-            self.restoreCandidate = nil
-            Task {
-                try? await Task.sleep(for: .milliseconds(400))
-                message = BackupMessage(
-                    title: String(localized: LocalizedStringResource("Backup restored", locale: locale)),
-                    text: String(localized: LocalizedStringResource("The existing data was replaced with the backup.", locale: locale))
-                )
-            }
+            try BackupService().restore(candidate.prepared, mode: candidate.mode, into: modelContext)
+            restoreCandidate = nil
+            message = BackupMessage(
+                title: String(localized: LocalizedStringResource("Backup restored", locale: locale)),
+                text: String(localized: LocalizedStringResource(candidate.mode == .full
+                    ? "The existing data was replaced with the backup."
+                    : "Customers, suppliers and products were imported. Current jobs were removed; company details, number sequences and issued documents were retained.", locale: locale))
+            )
         } catch {
-            self.restoreCandidate = nil
-            Task {
-                try? await Task.sleep(for: .milliseconds(400))
-                message = BackupMessage(
-                    title: String(localized: LocalizedStringResource("Could not restore backup", locale: locale)),
-                    text: localizedError(error)
-                )
-            }
+            message = BackupMessage(
+                title: String(localized: LocalizedStringResource("Could not restore backup", locale: locale)),
+                text: localizedError(error)
+            )
         }
+        showsConfirmation = false
     }
 
     private func cancelRestore() {
+        showsConfirmation = false
         restoreCandidate = nil
     }
 
@@ -217,6 +248,7 @@ struct BackupSectionView: View {
 private struct RestoreCandidate: Identifiable {
     let id = UUID()
     let prepared: PreparedBackup
+    let mode: BackupImportMode
 }
 
 private struct BackupMessage: Identifiable {
@@ -228,40 +260,50 @@ private struct BackupMessage: Identifiable {
 private struct RestoreConfirmationSection: View {
     @Environment(\.locale) private var locale
     @State private var isRestoring = false
+    @State private var confirmsReplacement = false
     let summary: BackupSummary
+    let mode: BackupImportMode
     let exportCurrent: () -> Void
     let restore: () -> Void
     let cancel: () -> Void
 
     var body: some View {
-        Section("Restore backup") {
-            LabeledContent("Customers", value: summary.customers.formatted())
-            LabeledContent("Jobs", value: summary.jobs.formatted())
-            LabeledContent("Photos", value: summary.photos.formatted())
-            LabeledContent("Work entries", value: summary.workEntries.formatted())
-            LabeledContent("Materials", value: summary.materials.formatted())
-            LabeledContent(
-                "Created",
-                value: summary.createdAt.formatted(
-                    .dateTime.day().month(.abbreviated).year().hour().minute().locale(locale)
-                )
-            )
-
-            Text("Restoring uses full replacement. All current customers, jobs, work entries, materials, company information, logo, and images will be replaced.")
-                .foregroundStyle(.secondary)
-
-            Button("Export current data first", systemImage: "square.and.arrow.up", action: exportCurrent)
-            Button(role: .destructive, action: beginRestore) {
-                if isRestoring {
-                    ProgressView()
-                } else {
-                    Text("Replace current data")
+        NavigationStack {
+            Form {
+                Section("Before importing") {
+                    Text(mode == .full
+                        ? LocalizedStringResource("Current editable data, company details and images will be replaced. Existing issued invoices and credit notes are retained.")
+                        : LocalizedStringResource("Import customers, suppliers and products only. Current jobs and their photos, work and drafts are removed. Company details, number sequences and issued documents on this device are retained."))
+                    Button("Export current data first", systemImage: "square.and.arrow.up", action: exportCurrent)
+                    Toggle("I understand that current data will be replaced", isOn: $confirmsReplacement)
+                }
+                Section("Contents to import") {
+                    LabeledContent("Customers", value: summary.customers.formatted())
+                    LabeledContent("Suppliers", value: summary.suppliers.formatted())
+                    LabeledContent("Products", value: summary.products.formatted())
+                    if mode == .full {
+                        LabeledContent("Jobs", value: summary.jobs.formatted())
+                        LabeledContent("Photos", value: summary.photos.formatted())
+                        LabeledContent("Work entries", value: summary.workEntries.formatted())
+                        LabeledContent("Materials", value: summary.materials.formatted())
+                    }
+                    LabeledContent("Created", value: summary.createdAt.formatted(
+                        .dateTime.day().month(.abbreviated).year().hour().minute().locale(locale)))
                 }
             }
             .disabled(isRestoring)
-
-            Button("Cancel", role: .cancel, action: cancel)
-                .disabled(isRestoring)
+            .navigationTitle(mode.title)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: cancel).disabled(isRestoring)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(role: .destructive, action: beginRestore) {
+                        if isRestoring { ProgressView() } else { Text("Replace and import") }
+                    }
+                    .disabled(!confirmsReplacement || isRestoring)
+                }
+            }
         }
     }
 

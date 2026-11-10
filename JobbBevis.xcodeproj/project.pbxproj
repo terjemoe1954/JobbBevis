@@ -14,6 +14,13 @@
 			remoteGlobalIDString = A8E00AF5308E4E8C0043DA11;
 			remoteInfo = JobbBevis;
 		};
+		D06F4A4200394879A7AD6ABD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A8E00AEE308E4E8C0043DA11 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A8E00AF5308E4E8C0043DA11;
+			remoteInfo = JobbBevis;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
@@ -109,6 +116,9 @@
 				A8E00B5D308E6C870043DA11 /* Resources */,
 			);
 			buildRules = (
+			);
+			dependencies = (
+				7556DDF89C034B78B0FD4861 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				A8E00B60308E6C870043DA11 /* JobbBevisTests */,
@@ -225,6 +235,11 @@
 			isa = PBXTargetDependency;
 			target = A8E00AF5308E4E8C0043DA11 /* JobbBevis */;
 			targetProxy = A8E00B6E308E6CFE0043DA11 /* PBXContainerItemProxy */;
+		};
+		7556DDF89C034B78B0FD4861 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A8E00AF5308E4E8C0043DA11 /* JobbBevis */;
+			targetProxy = D06F4A4200394879A7AD6ABD /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -356,7 +371,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = 4LR68777XL;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -370,7 +385,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.terjemoe.JobbBevis;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -392,7 +407,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = 4LR68777XL;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -406,7 +421,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.terjemoe.JobbBevis;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -425,7 +440,7 @@
 		A8E00B64308E6C870043DA11 /* Debug configuration for PBXNativeTarget "JobbBevisTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/JobbBevis.app/JobbBevis.debug.dylib";
+				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -450,7 +465,7 @@
 		A8E00B65308E6C870043DA11 /* Release configuration for PBXNativeTarget "JobbBevisTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/JobbBevis.app/JobbBevis.debug.dylib";
+				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;

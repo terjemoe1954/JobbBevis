@@ -13,6 +13,7 @@ struct PurchaseItemFormView: View {
 
     @State private var supplier: String
     @State private var selectedCatalogProductID: UUID?
+    @State private var itemNumber: String
     @State private var itemName: String
     @State private var quantityText: String
     @State private var selectedUnit: String
@@ -31,6 +32,7 @@ struct PurchaseItemFormView: View {
         let isPreset = MaterialUnit.allCases.contains { $0.rawValue == existingUnit }
         _supplier = State(initialValue: item?.supplier ?? "")
         _selectedCatalogProductID = State(initialValue: nil)
+        _itemNumber = State(initialValue: item?.itemNumber ?? "")
         _itemName = State(initialValue: item?.itemName ?? "")
         _quantityText = State(initialValue: item?.quantity.description ?? "")
         _selectedUnit = State(initialValue: isPreset ? existingUnit : "custom")
@@ -55,6 +57,7 @@ struct PurchaseItemFormView: View {
                     }
 
                     TextField("Supplier", text: $supplier)
+                    TextField("Item number (optional)", text: $itemNumber)
                     TextField("Item", text: $itemName)
                     TextField("Quantity", text: $quantityText)
                         .keyboardType(.decimalPad)
@@ -69,7 +72,7 @@ struct PurchaseItemFormView: View {
                         TextField("Unit", text: $customUnit)
                     }
 
-                    TextField("Unit price, excluding VAT", text: $unitPriceText)
+                    TextField("Customer unit price, excluding VAT", text: $unitPriceText)
                         .keyboardType(.decimalPad)
                     TextField("Note", text: $note, axis: .vertical)
                         .lineLimit(2...5)
@@ -129,6 +132,7 @@ struct PurchaseItemFormView: View {
             return
         }
         supplier = product.supplierRecord?.name ?? product.supplier
+        itemNumber = product.itemNumber ?? ""
         itemName = product.name
         selectedUnit = MaterialUnit(rawValue: product.unit) == nil ? "custom" : product.unit
         customUnit = selectedUnit == "custom" ? product.unit : ""
@@ -157,6 +161,11 @@ struct PurchaseItemFormView: View {
             return
         }
 
+        if let item, !item.linkedMaterials.isEmpty, resolvedUnit != item.unit {
+            validationMessage = String(localized: "Unlink registered materials before changing the purchase unit.")
+            return
+        }
+
         let savedItem: PurchaseItem
         if let item {
             savedItem = item
@@ -174,6 +183,8 @@ struct PurchaseItemFormView: View {
         }
 
         savedItem.supplier = trimmedSupplier
+        let trimmedNumber = itemNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+        savedItem.itemNumber = trimmedNumber.isEmpty ? nil : trimmedNumber
         savedItem.itemName = trimmedName
         savedItem.quantity = quantity
         savedItem.unit = resolvedUnit
@@ -207,6 +218,7 @@ struct PurchaseItemFormView: View {
                 unitPrice: unitPrice
             )
             modelContext.insert(product)
+            savedItem.itemNumber = product.itemNumber
         }
 
         do {

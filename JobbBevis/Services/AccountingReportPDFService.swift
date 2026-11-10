@@ -3,6 +3,7 @@ import UIKit
 
 struct AccountingReportPDFService {
     func exportData(invoices: [InvoiceRecord], locale: Locale) throws -> Data {
+        let invoices = invoices.filter { !$0.isExercise }
         guard !invoices.isEmpty else { throw AccountingCSVExportError.noInvoices }
 
         let records = try invoices.sorted(by: { $0.issuedAt < $1.issuedAt }).map { invoice in
@@ -35,7 +36,7 @@ struct AccountingReportPDFService {
                 paragraph.alignment = alignment
                 paragraph.lineBreakMode = .byTruncatingTail
                 (value as NSString).draw(
-                    in: CGRect(x: x, y: y, width: width, height: 18),
+                    in: CGRect(x: x, y: y, width: width, height: max(18, font.lineHeight + 2)),
                     withAttributes: [.font: font, .foregroundColor: color, .paragraphStyle: paragraph]
                 )
             }

@@ -1,0 +1,11 @@
+# Øvelsesmodus og datokontroll
+
+Øvelsesmodus velges på den enkelte jobben. Eksisterende jobber blir ikke automatisk øvelser, og det gamle sampleData-flagget brukes ikke til å omklassifisere dem. Modusen låses i redigeringsskjemaet når tilbud er akseptert eller faktura utstedt. Dokumentkopiens modus er frosset i snapshotet. Tidligere fakturaer og ordinær nummerserie endres ikke.
+
+Nye øvelsesfakturaer bruker TEST-ÅR-NUMMER og øvelseskreditnotaer TEST-KN-ÅR-NUMMER, med hver sin teller adskilt fra ordinære tellere. Fakturaer, kreditnotaer, tilbud, ordrebekreftelser, utkast og oppdragsrapporter merkes ØVELSE - SKAL IKKE BETALES. Merkingen gjentas på hver side, og øvelsesdokumenter viser ingen betalingskonto. Firma og kunde må fortsatt ha dokumentgrunnlag som før.
+
+Ordinær CSV- og regnskapsrapport-PDF utelater øvelsesfakturaer. Eksportoversikten teller bare ordinære fakturaer og forklarer utelukkelsen. Backup bevarer øvelsesmodus og begge nye tellere; gjenoppretting beregner nedre grense for ordinær og TEST-serie hver for seg. Historiske øvelser som tidligere ble utstedt som ordinære fakturaer omklassifiseres ikke.
+
+Datokontroll sammenligner kalenderdager og varsler fullføring før planlagt dato, fullføring i fremtiden, arbeid etter fullføring, fremtidig arbeid, fremtidig levering ved fakturering og forfall før fakturadato eller levering. Lagre jobb med avvik krever bekreftelse. Utstedelsesdialogen viser alle varsler, kunde og jobb. Tjenesten avviser datovarsler uten eksplisitt bekreftelse. Ingen datoer endres automatisk. Fakturaskjemaet viser kunde, jobbnummer, fakturadato og total før utstedelse; rapportbyggeren viser datovarsler.
+
+Kontrollert: Xcode-bygg; isolerte kontroller av ordinær serie fra 17 og TEST-serie fra 3, separate kreditnotatellere, eksport med blandede ordinære/TEST-fakturaer, avvist eksport med bare TEST, uforanderlig snapshotmodus, datovarsler og bekreftelse uten datoendring, kalenderdager, sikkerhetskopi og eldre snapshot-/backupformat. Fire norske PDF-varianter på totalt 17 sider ble rendret og visuelt kontrollert; alle sider har varsel og ingen betalingskonto. Separat gammel database oppgradert med bevart jobb og ordinære tellere 23/11; øvelsesmodus starter avslått og nye felt lagres. Brukerens database ble ikke åpnet. Ikke installert eller lastet opp til TestFlight.

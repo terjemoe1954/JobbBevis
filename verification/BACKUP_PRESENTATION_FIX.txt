@@ -1,0 +1,36 @@
+BACKUPSKJERM SOM FORSVINNER – 9. NOVEMBER 2026
+
+Brukeren meldte at importskjermen forsvinner etter omtrent to sekunder i
+build 8, også på iPhone. Automatiske datatester og byggekontroll fanget
+ikke presentasjonsfeilen.
+
+Rettet til build 9:
+- Backup åpnes som egen skjerm fra Innstillinger. Filvelger, eksport og
+  bekreftelse har én stabil Form som presentasjonsvert, ikke en Group med
+  en seksjon inne i det overordnede skjemaet.
+- Filvalg leser og validerer bare filen. Ingen bekreftelse åpnes automatisk
+  mens filvelgeren lukkes. Valgt backup vises på siden frem til brukeren
+  trykker Se gjennom valgt backup.
+- Bekreftelse krever fortsatt eksplisitt erstatningsvalg og importknapp.
+- Eksport før import startes fra bekreftelsens onDismiss. Ingen tidsforsinkelse
+  brukes til å gjette når filvelger eller bekreftelse er lukket. Valgt backup
+  beholdes etter eksport og åpnes igjen via gjennomgangsknappen.
+- Resultat og feil vises på backupskjermen, ikke som en konkurrerende dialog.
+- Importtjenesten og databehandlingen er uendret. Manualen er oppdatert.
+
+Byggekontroll bestått. Separat Mac Catalyst-skjermtest med samme backupkode,
+eget app-ID, minnedatabase og en tom JSON-testbackup: filvelgeren blir
+stående; filvalg viser en stabil oversikt; bekreftelsen blir stående
+utover to sekunder; eksplisitt eksport åpner filvinduet etter onDismiss.
+Ingen import er gjort i brukerens database.
+Praktisk ny kontroll på brukerens iPhone gjenstår etter installasjon.
+
+BRUKERBEKREFTET 9. NOVEMBER 2026
+- Brukeren bekreftet stabil importskjerm på iPhone.
+- Mac-skjermbilder viser stabil bekreftelse for full backup og registerimport.
+- Registerimport utført av brukeren: 4 kunder, 4 leverandører, 8 varer,
+  oppdrag fjernet og utstedte fakturaer beholdt. Brukeren bekreftet resultatet.
+- Deretter full gjenoppretting utført av brukeren: begge oppdragene tilbake,
+  kjøkkenjobb med bilder, arbeidslogg og materialer bekreftet.
+- Apple-status kontrollert på nytt: build 7 Waiting for Review;
+  build 9 Ready to Submit i Internal. Ingen ekstern innsending av build 9.

@@ -8,8 +8,11 @@ struct JobFormView: View {
     @Query(sort: \Customer.name) private var customers: [Customer]
     @Query(sort: \JobRecord.title) private var jobs: [JobRecord]
     @Query private var profiles: [CompanyProfile]
+    @Query private var invoices: [InvoiceRecord]
     let job: JobRecord?
 
+    @State private var isExercise: Bool
+    @State private var confirmsDateWarnings = false
     @State private var title: String
     @State private var selectedCustomerID: UUID?
     @State private var workAddress: String
@@ -31,6 +34,7 @@ struct JobFormView: View {
 
     init(job: JobRecord? = nil) {
         self.job = job
+        _isExercise = State(initialValue: job?.isExercise ?? false)
         _title = State(initialValue: job?.title ?? "")
         _selectedCustomerID = State(initialValue: job?.customer.id)
         _workAddress = State(initialValue: job?.workAddress ?? "")
@@ -67,6 +71,19 @@ struct JobFormView: View {
                     customerAddress: selectedCustomer?.address ?? ""
                 )
 
+                Section("Exercise mode") {
+                    Toggle("Exercise job", isOn: $isExercise)
+                        .disabled(modeIsLocked)
+                    Text("Exercise documents are marked DO NOT PAY, use a separate TEST series and are excluded from ordinary accounting export.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    if modeIsLocked { Text("The mode is locked after a bid is accepted or an invoice is issued.").font(.footnote) }
+                }
+                if !dateIssues.isEmpty {
+                    Section("Check dates") {
+                        ForEach(dateIssues) { Text($0.message).foregroundStyle(.orange) }
+                    }
+                }
+
                 Section("Description") {
                     TextField("Describe the work", text: $details, axis: .vertical)
                         .lineLimit(4...10)
@@ -95,6 +112,12 @@ struct JobFormView: View {
                 CustomerFormView { customer in
                     selectedCustomerID = customer.id
                 }
+            }
+            .confirmationDialog("Keep these dates?", isPresented: $confirmsDateWarnings, titleVisibility: .visible) {
+                Button("Keep dates and save", action: persist)
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text(dateIssues.map { String(localized: $0.message) }.joined(separator: "\n"))
             }
             .alert("Could not save changes", isPresented: errorBinding) {
                 Button("OK", role: .cancel) { }
@@ -132,7 +155,19 @@ struct JobFormView: View {
         )
     }
 
+    private var modeIsLocked: Bool {
+        guard let job else { return false }
+        return job.acceptedBidSnapshotData != nil || invoices.contains { $0.jobID == job.id }
+    }
+    private var dateIssues: [JobDateValidation.Issue] {
+        JobDateValidation.issues(plannedDate: plannedDate, completedAt: status == .completed ? completedAt : nil, workDates: job?.workEntries.map(\.workDate) ?? [])
+    }
     private func save() {
+        if !dateIssues.isEmpty && selectedCustomer != nil && !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            confirmsDateWarnings = true
+        } else { persist() }
+    }
+    private func persist() {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         showTitleError = trimmedTitle.isEmpty
         showCustomerError = selectedCustomer == nil
@@ -165,6 +200,7 @@ struct JobFormView: View {
                 modelContext.insert(savedJob)
             }
 
+            if !modeIsLocked { savedJob.isExercise = isExercise }
             savedJob.title = trimmedTitle
             savedJob.customer = selectedCustomer
             savedJob.workAddress = workAddress.trimmingCharacters(in: .whitespacesAndNewlines)

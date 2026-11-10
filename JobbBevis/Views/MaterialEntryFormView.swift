@@ -10,6 +10,8 @@ struct MaterialEntryFormView: View {
     let job: JobRecord
     let entry: MaterialEntry?
 
+    @State private var sourcePurchaseItemID: UUID?
+    @State private var itemNumber: String
     @State private var name: String
     @State private var quantityText: String
     @State private var selectedUnit: String
@@ -24,8 +26,13 @@ struct MaterialEntryFormView: View {
     init(job: JobRecord, entry: MaterialEntry? = nil) {
         self.job = job
         self.entry = entry
+        _sourcePurchaseItemID = State(initialValue: entry?.sourcePurchaseItemID ?? job.purchaseItems.first(where: {
+            guard let entry else { return false }
+            return $0.transferredMaterialID == entry.id
+        })?.id)
         let existingUnit = entry?.unit ?? MaterialUnit.pieces.rawValue
         let isPreset = MaterialUnit.allCases.contains { $0.rawValue == existingUnit }
+        _itemNumber = State(initialValue: entry?.itemNumber ?? "")
         _name = State(initialValue: entry?.name ?? "")
         _quantityText = State(initialValue: entry.map { String(describing: $0.quantity) } ?? "")
         _selectedUnit = State(initialValue: isPreset ? existingUnit : "custom")
@@ -37,6 +44,16 @@ struct MaterialEntryFormView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("Purchase item link") {
+                    Picker("Purchase item", selection: $sourcePurchaseItemID) {
+                        Text("No purchase item link").tag(UUID?.none)
+                        ForEach(job.purchaseItems.sorted { $0.itemName.localizedStandardCompare($1.itemName) == .orderedAscending }) { item in
+                            Text("\(item.displayName) · \(item.supplier)").tag(Optional(item.id))
+                        }
+                    }
+                    Text("Link usage explicitly to show used and remaining quantities. Existing quantity and price are kept.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
                 Section("Material") {
                     if entry == nil, !products.isEmpty {
                         Menu("Copy from product catalog", systemImage: "shippingbox.fill") {
@@ -47,6 +64,7 @@ struct MaterialEntryFormView: View {
                             }
                         }
                     }
+                    TextField("Item number (optional)", text: $itemNumber)
                     TextField("Name", text: $name)
                     if showNameError {
                         Text("Enter a material name.")
@@ -140,6 +158,16 @@ struct MaterialEntryFormView: View {
             return
         }
 
+        let source = job.purchaseItems.first { $0.id == sourcePurchaseItemID }
+        if sourcePurchaseItemID != nil && source == nil {
+            errorMessage = MaterialTransferService.TransferError.missingSource.localizedDescription
+            return
+        }
+        if let source, source.unit != resolvedUnit {
+            errorMessage = MaterialTransferService.TransferError.unitMismatch.localizedDescription
+            return
+        }
+
         let savedEntry: MaterialEntry
         if let entry {
             savedEntry = entry
@@ -154,6 +182,8 @@ struct MaterialEntryFormView: View {
             job.materialEntries.append(savedEntry)
         }
 
+        let trimmedNumber = itemNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+        savedEntry.itemNumber = trimmedNumber.isEmpty ? nil : trimmedNumber
         savedEntry.name = trimmedName
         savedEntry.quantity = quantity
         savedEntry.unit = resolvedUnit
@@ -163,6 +193,7 @@ struct MaterialEntryFormView: View {
         job.updatedAt = .now
 
         do {
+            try MaterialTransferService.link(savedEntry, to: source)
             try modelContext.save()
             dismiss()
         } catch {
@@ -172,6 +203,7 @@ struct MaterialEntryFormView: View {
     }
 
     private func apply(_ product: ProductCatalogItem) {
+        itemNumber = product.itemNumber ?? ""
         name = product.name
         let isPreset = MaterialUnit.allCases.contains { $0.rawValue == product.unit }
         selectedUnit = isPreset ? product.unit : "custom"

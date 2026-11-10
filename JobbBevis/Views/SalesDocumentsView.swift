@@ -20,6 +20,9 @@ struct SalesDocumentsView: View {
     @State private var errorMessage: String?
     @State private var isEditingInvoiceBasis = false
     @State private var showsDeleteDraftConfirmation = false
+    @State private var draftSavedMessage: String?
+    @State private var preparedBid: SalesDocumentSnapshot?
+    @State private var confirmsAcceptedBid = false
 
     private var invoices: [InvoiceRecord] {
         allInvoices.filter { $0.jobID == job.id }
@@ -27,9 +30,21 @@ struct SalesDocumentsView: View {
 
     var body: some View {
         Form {
+            if job.isExercise {
+                Section("Exercise mode") { Text("EXERCISE - DO NOT PAY").foregroundStyle(.orange) }
+            }
             if workflow == .bid {
                 Section("Bid") {
                     Button("Create bid", systemImage: "doc.text", action: createBid)
+                    if job.acceptedBidSnapshot != nil {
+                        Button("Open accepted bid", systemImage: "doc.badge.clock", action: openAcceptedBid)
+                        Text("The accepted copy is preserved. Current estimates and registered usage do not change it.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    } else if preparedBid != nil {
+                        Button("Record customer acceptance", systemImage: "checkmark.seal") { confirmsAcceptedBid = true }
+                        Text("Record acceptance only after the customer has accepted the bid you just previewed.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
                     Button("Edit estimate", systemImage: "pencil") {
                         isEditingInvoiceBasis = true
                     }
@@ -59,11 +74,29 @@ struct SalesDocumentsView: View {
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     } else if job.hasInvoiceDraft {
+                        LabeledContent("Customer", value: job.customer.name)
+                        LabeledContent("Job number", value: job.jobNumber)
+                        LabeledContent("Invoice date", value: Date.now.formatted(.dateTime.day().month().year().locale(locale)))
+                        LabeledContent("Total", value: PriceEstimateCalculator.currency(PriceEstimateCalculator.summary(for: job, basis: .registered, isVATRegistered: profiles.first?.isVATRegistered ?? false).total, locale: locale))
+                        Text(job.isExercise ? LocalizedStringResource("Exercise invoice - separate TEST series") : LocalizedStringResource("Ordinary invoice - permanent invoice number"))
+                            .font(.footnote).foregroundStyle(.secondary)
+                        ForEach(JobDateValidation.issues(for: job, dueDate: dueDate, checksDelivery: true)) {
+                            Text($0.message).foregroundStyle(.orange)
+                        }
+                        Toggle("Combine matching linked material lines", isOn: invoiceGroupingBinding)
+                        Text("Only usage linked to the same purchase item with identical item number, name, unit and price is combined. Original registrations are kept.")
+                            .font(.footnote).foregroundStyle(.secondary)
                         Button("Edit invoice basis", systemImage: "pencil") {
                             isEditingInvoiceBasis = true
                         }
-                        DatePicker("Due date", selection: $dueDate, in: Date.now..., displayedComponents: .date)
+                        DatePicker("Due date", selection: $dueDate, displayedComponents: .date)
                         Button("Save draft", systemImage: "square.and.arrow.down", action: saveDraft)
+                        if let draftSavedMessage {
+                            Text(draftSavedMessage).font(.footnote).foregroundStyle(.secondary)
+                        }
+                        Button("Preview invoice draft", systemImage: "doc.text.magnifyingglass", action: previewDraft)
+                        Text("Check the customer, lines, prices, VAT and due date before approval. The preview has no invoice number and does not lock the job.")
+                            .font(.footnote).foregroundStyle(.secondary)
                         Button("Approve and issue invoice", systemImage: "checkmark.seal") {
                             showsInvoiceConfirmation = true
                         }
@@ -100,7 +133,15 @@ struct SalesDocumentsView: View {
             Button("Approve and issue", action: issueInvoice)
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("The invoice receives a permanent number and a locked copy of customer, company, lines, and prices.")
+            Text(invoiceConfirmationMessage)
+        }
+        .confirmationDialog("Record accepted bid?", isPresented: $confirmsAcceptedBid, titleVisibility: .visible) {
+            Button("Record acceptance", action: recordAcceptance)
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            if let preparedBid {
+                Text("Customer: \(preparedBid.customerName). Total: \(PriceEstimateCalculator.currency(preparedBid.total, locale: locale)). This preserves the last previewed bid as a dated copy.")
+            }
         }
         .confirmationDialog("Delete invoice draft?", isPresented: $showsDeleteDraftConfirmation, titleVisibility: .visible) {
             Button("Delete draft", role: .destructive, action: deleteDraft)
@@ -119,6 +160,7 @@ struct SalesDocumentsView: View {
         } message: {
             Text(errorMessage ?? "")
         }
+        .onChange(of: dueDate) { _, _ in draftSavedMessage = nil }
         .task(id: job.id) {
             dueDate = job.invoiceDraftDueDate
                 ?? Calendar.current.date(byAdding: .day, value: 14, to: .now)
@@ -144,12 +186,35 @@ struct SalesDocumentsView: View {
             return
         }
         do {
-            let snapshot = try SalesDocumentService.snapshot(job: job, company: company, basis: .estimate)
+            let snapshot = try SalesDocumentService.snapshot(
+                job: job,
+                company: company,
+                basis: .estimate,
+                locale: locale
+            )
             let url = try SalesDocumentPDFService().generate(snapshot: snapshot, kind: .bid, locale: locale)
+            preparedBid = snapshot
             preview = SalesDocumentPreview(url: url, title: "Bid")
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func recordAcceptance() {
+        guard let preparedBid else { return }
+        do {
+            try SalesDocumentService.recordAcceptedBid(preparedBid, for: job, in: modelContext)
+            self.preparedBid = nil
+            openAcceptedBid()
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    private func openAcceptedBid() {
+        guard let snapshot = job.acceptedBidSnapshot, let acceptedAt = job.acceptedBidAt else { return }
+        do {
+            let url = try SalesDocumentPDFService().generate(snapshot: snapshot, kind: .acceptedBid(acceptedAt: acceptedAt), locale: locale)
+            preview = SalesDocumentPreview(url: url, title: "Accepted bid")
+        } catch { errorMessage = error.localizedDescription }
     }
 
     private func createOrderConfirmation() {
@@ -158,12 +223,50 @@ struct SalesDocumentsView: View {
             return
         }
         do {
-            let snapshot = try SalesDocumentService.snapshot(job: job, company: company)
+            let snapshot = try SalesDocumentService.snapshot(job: job, company: company, locale: locale)
             let url = try SalesDocumentPDFService().generate(snapshot: snapshot, kind: .orderConfirmation, locale: locale)
             preview = SalesDocumentPreview(url: url, title: "Order confirmation")
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func previewDraft() {
+        guard let company = profiles.first else {
+            errorMessage = String(localized: "Complete the company profile in Settings first.")
+            return
+        }
+        do {
+            let snapshot = try SalesDocumentService.snapshot(job: job, company: company, locale: locale)
+            let url = try SalesDocumentPDFService().generate(
+                snapshot: snapshot, kind: .invoiceDraft(dueDate: dueDate), locale: locale
+            )
+            preview = SalesDocumentPreview(url: url, title: "Invoice draft")
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private var invoiceGroupingBinding: Binding<Bool> {
+        Binding(get: { job.combinesInvoiceLines }, set: { value in
+            job.combinesInvoiceLines = value
+            job.updatedAt = .now
+            draftSavedMessage = nil
+            do { try modelContext.save() }
+            catch {
+                modelContext.rollback()
+                errorMessage = String(localized: "The invoice draft could not be saved. Try again.")
+            }
+        })
+    }
+
+    private var invoiceConfirmationMessage: String {
+        let mode = job.isExercise
+            ? String(localized: "The exercise invoice receives a TEST number and is marked DO NOT PAY. The ordinary invoice series is unchanged.")
+            : String(localized: "The invoice receives a permanent number and a locked copy of customer, company, lines, and prices.")
+        let identity = String(localized: "Customer: \(job.customer.name). Job: \(job.jobNumber).")
+        let warnings = JobDateValidation.issues(for: job, dueDate: dueDate, checksDelivery: true).map { String(localized: $0.message) }
+        return ([mode, identity] + warnings + [String(localized: "Confirm only after checking the dates and the draft.")]).joined(separator: "\n\n")
     }
 
     private func issueInvoice() {
@@ -173,7 +276,12 @@ struct SalesDocumentsView: View {
         }
         do {
             let invoice = try SalesDocumentService.issueInvoice(
-                job: job, company: company, dueDate: dueDate, in: modelContext
+                job: job,
+                company: company,
+                dueDate: dueDate,
+                datesAcknowledged: true,
+                locale: locale,
+                in: modelContext
             )
             open(invoice, isCopy: false)
         } catch {
@@ -201,7 +309,9 @@ struct SalesDocumentsView: View {
     private func saveDraftChanges() {
         do {
             try modelContext.save()
+            draftSavedMessage = job.hasInvoiceDraft ? String(localized: "The invoice draft is saved.") : nil
         } catch {
+            draftSavedMessage = nil
             modelContext.rollback()
             errorMessage = String(localized: "The invoice draft could not be saved. Try again.")
         }

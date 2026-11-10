@@ -8,6 +8,7 @@ struct PurchaseListView: View {
 
     @State private var isAddingItem = false
     @State private var selectedItem: PurchaseItem?
+    @State private var usageItem: PurchaseItem?
     @State private var itemPendingDeletion: PurchaseItem?
     @State private var errorMessage: String?
 
@@ -42,14 +43,14 @@ struct PurchaseListView: View {
                     ForEach(orderedItems) { item in
                         HStack(spacing: 12) {
                             Button {
-                                toggleMaterialTransfer(for: item)
+                                usageItem = item
                             } label: {
-                                Image(systemName: item.isTransferredToMaterials ? "checkmark.circle.fill" : "circle")
+                                Image(systemName: item.isTransferredToMaterials ? "checkmark.circle.fill" : item.usedQuantity > 0 ? "circle.lefthalf.filled" : "circle")
                                     .font(.title2)
                                     .foregroundStyle(item.isTransferredToMaterials ? .green : .secondary)
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel(item.isTransferredToMaterials ? "Remove from materials" : "Add to materials")
+                            .accessibilityLabel("Register used quantity")
 
                             Button {
                                 selectedItem = item
@@ -65,12 +66,12 @@ struct PurchaseListView: View {
                         }
                     }
                 } footer: {
-                    Text("Purchase prices are internal costs and are not added to the customer price estimate.")
+                    Text("These prices are used in the customer bid and copied to registered usage. Separate internal cost prices are not recorded.")
                 }
 
                 Section {
                     LabeledContent(
-                        "Total purchases excluding VAT",
+                        "Planned items excluding VAT",
                         value: PriceEstimateCalculator.currency(total, locale: locale)
                     )
                     .font(.headline)
@@ -85,6 +86,9 @@ struct PurchaseListView: View {
         }
         .sheet(isPresented: $isAddingItem) {
             PurchaseItemFormView(job: job)
+        }
+        .sheet(item: $usageItem) { item in
+            PurchaseUsageView(item: item)
         }
         .sheet(item: $selectedItem) { item in
             PurchaseItemFormView(job: job, item: item)
@@ -133,36 +137,7 @@ struct PurchaseListView: View {
         }
     }
 
-    private func toggleMaterialTransfer(for item: PurchaseItem) {
-        if let materialID = item.transferredMaterialID {
-            if let material = job.materialEntries.first(where: { $0.id == materialID }) {
-                modelContext.delete(material)
-            }
-            item.transferredMaterialID = nil
-            item.transferredAt = nil
-        } else {
-            let material = MaterialEntry(
-                name: item.itemName,
-                quantity: item.quantity,
-                unit: item.unit,
-                note: item.note,
-                job: job,
-                unitPrice: item.unitPrice
-            )
-            modelContext.insert(material)
-            job.materialEntries.append(material)
-            item.transferredMaterialID = material.id
-            item.transferredAt = .now
-        }
-        item.updatedAt = .now
-        job.updatedAt = .now
-        do {
-            try modelContext.save()
-        } catch {
-            modelContext.rollback()
-            errorMessage = String(localized: "The purchase item could not be transferred to materials. Try again.")
-        }
-    }
+
 }
 
 private struct PurchaseItemRow: View {
@@ -172,11 +147,26 @@ private struct PurchaseItemRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline) {
-                Text(item.itemName)
+                Text(item.displayName)
                     .font(.headline)
                 Spacer()
                 Text(PriceEstimateCalculator.currency(item.lineTotal, locale: locale))
                     .font(.headline)
+            }
+            let used = EntryFormatting.formatDecimal(item.usedQuantity, locale: locale)
+            let planned = EntryFormatting.formatDecimal(item.quantity, locale: locale)
+            let remaining = EntryFormatting.formatDecimal(item.remainingQuantity, locale: locale)
+            let unitLabel = MaterialUnit(rawValue: item.unit).map { unit in
+                var label = unit.abbreviation
+                label.locale = locale
+                return String(localized: label)
+            } ?? item.unit
+            Text("Used \(used) of \(planned) \(unitLabel)")
+                .font(.subheadline).foregroundStyle(.secondary)
+            if item.usedQuantity > item.quantity {
+                Text("Usage exceeds the planned quantity.").font(.caption).foregroundStyle(.orange)
+            } else {
+                Text("Remaining: \(remaining) \(unitLabel)").font(.caption).foregroundStyle(.secondary)
             }
             Text(item.supplier)
                 .font(.subheadline)

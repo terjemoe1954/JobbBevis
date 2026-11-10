@@ -1,0 +1,38 @@
+JOBBBEVIS 1.0.2 (7) – EKSTERN TESTFLIGHT
+Krever iOS/iPadOS 27 eller nyere (prosjektets eksisterende minimum).
+
+HVA SOM ER NYTT
+- Registrer delmengder fra innkjøpslisten, med brukt/gjenstående og sporbar kobling.
+- Separate summer for planlagt tilbud og faktisk arbeid/forbruk.
+- Datert, bevart kopi av kundens aksepterte tilbud.
+- Fakturautkast med lagringsbekreftelse, kontrollfelt og PDF før utstedelse.
+- Varenummer følger jobbposter og materialoverføringer.
+- Rapport med eget prisvalg, linje-/totalsummer, norske enheter og bedre sideskift.
+- Øvelsesmodus med separate TEST-serier, datovarsler og tydelige øvelsesdokumenter.
+- Periode- og fakturavalg ved regnskapseksport, med avstemming før eksport.
+- Valgfri samling av identiske materiallinjer koblet til samme innkjøpslinje; grunnposter beholdes.
+
+PRØV DETTE MED FIKTIVE DATA
+1. Opprett en ny jobb og slå på Øvelsesjobb. Bruk oppdiktet kunde og firmanavn.
+   Dersom fiktive organisasjonsnumre avvises, finnes innstillingen for kontroll
+   av organisasjons- og kontonummer under Innstillinger. Ikke bruk virkelige kundedata.
+2. Legg inn 10 kg sparkel à 65 kr i innkjøpslisten. Registrer først 2 kg, så 8 kg.
+   Kontroller 10 kg brukt, 0 kg gjenstående og uendret planlagt mengde/pris.
+3. Registrer arbeid og legg inn før-, underveis- og etterbilder med tekst.
+   Lag rapport uten priser og med priser. Kontroller tekst, bilder og sideskift.
+4. Opprett fakturautkast, kontroller datoer og åpne Forhåndsvis utkast.
+   Prøv samling av like, koblede materiallinjer. Utkastet skal ikke bruke et nummer.
+5. Utsted bare på øvelsesjobben. Dokumentet skal ha TEST-nummer og merket
+   ØVELSE - SKAL IKKE BETALES. Øvelsesfakturaen skal ikke komme i ordinær eksport.
+6. Rapporter hvor du stopper, hva du forventet og hva appen viste.
+   Et skjermbilde uten personopplysninger er nyttig ved feil.
+
+TIL APPLE BETA REVIEW
+Appen fungerer lokalt på enheten uten innlogging eller serverkonto.
+Kamera/bilder brukes bare etter brukerens valg for dokumentasjon på en jobb.
+Test med en ny øvelsesjobb; en vanlig utstedt faktura får ellers permanent nummer.
+Øvelsesdokumenter skal ikke betales og holdes utenfor ordinær regnskapseksport.
+
+Denne teksten er klargjort for TestFlight. Build 1.0.2 (7) er lastet opp og
+lagt i External Beta, med status Waiting for Review. Ingen eksterne testere
+var invitert ved kontroll 8. november 2026 kl. 15:51.

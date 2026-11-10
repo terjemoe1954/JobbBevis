@@ -5,6 +5,8 @@ import SwiftData
 struct BackupSummary: Equatable {
     let createdAt: Date
     let customers: Int
+    let suppliers: Int
+    let products: Int
     let jobs: Int
     let photos: Int
     let workEntries: Int
@@ -17,8 +19,24 @@ struct PreparedBackup {
     let summary: BackupSummary
 }
 
+enum BackupImportMode: String, CaseIterable, Identifiable {
+    case full, registers
+    var id: String { rawValue }
+    var title: LocalizedStringResource {
+        switch self {
+        case .full: "Restore full backup"
+        case .registers: "Start fresh with registers"
+        }
+    }
+}
+
 @MainActor
 struct BackupService {
+    private let applicationDirectoryOverride: URL?
+    init(applicationDirectoryOverride: URL? = nil) {
+        self.applicationDirectoryOverride = applicationDirectoryOverride
+    }
+
     static let schemaVersion = 2
     static let maximumArchiveBytes = 250 * 1_024 * 1_024
     private static let maximumFileBytes = 25 * 1_024 * 1_024
@@ -147,7 +165,11 @@ struct BackupService {
                     vatRatePercent: $0.vatRatePercent,
                     hasInvoiceDraft: $0.hasInvoiceDraft,
                     invoiceDraftDueDate: $0.invoiceDraftDueDate,
-                    archivedAt: $0.archivedAt
+                    archivedAt: $0.archivedAt,
+                    acceptedBidSnapshotData: $0.acceptedBidSnapshotData,
+                    acceptedBidAt: $0.acceptedBidAt,
+                    isExercise: $0.isExercise,
+                    combinesInvoiceLines: $0.combinesInvoiceLines
                     , projectMode: $0.projectModeRawValue
                 )
             },
@@ -174,7 +196,9 @@ struct BackupService {
                     note: $0.note,
                     createdAt: $0.createdAt,
                     updatedAt: $0.updatedAt,
-                    unitPrice: $0.unitPrice
+                    unitPrice: $0.unitPrice,
+                    sourcePurchaseItemID: $0.sourcePurchaseItemID,
+                    itemNumber: $0.itemNumber
                 )
             },
             purchaseItems: purchaseItems.map {
@@ -183,6 +207,7 @@ struct BackupService {
                     jobID: $0.job.id,
                     supplier: $0.supplier,
                     itemName: $0.itemName,
+                    itemNumber: $0.itemNumber,
                     quantity: $0.quantity,
                     unit: $0.unit,
                     unitPrice: $0.unitPrice,
@@ -247,7 +272,9 @@ struct BackupService {
             metadata: metadata.map {
                 MetadataRecord(id: $0.id, nextJobSequence: $0.nextJobSequence,
                                nextInvoiceSequence: $0.nextInvoiceSequence,
-                               nextCreditNoteSequence: $0.nextCreditNoteSequence)
+                               nextCreditNoteSequence: $0.nextCreditNoteSequence,
+                               nextExerciseInvoiceSequence: $0.nextExerciseInvoiceSequence,
+                               nextExerciseCreditNoteSequence: $0.nextExerciseCreditNoteSequence)
             },
             files: files
         )
@@ -279,22 +306,26 @@ struct BackupService {
         return PreparedBackup(archive: archive, summary: summary(for: archive))
     }
 
-    func restore(_ prepared: PreparedBackup, into context: ModelContext) throws {
+    func restore(_ prepared: PreparedBackup, mode: BackupImportMode = .full, into context: ModelContext) throws {
         let rollbackData = try exportData(from: context)
         let rollbackArchive = try prepareImport(data: rollbackData).archive
+        let archive = mode == .registers
+            ? registersArchive(from: prepared.archive, current: rollbackArchive)
+            : prepared.archive
+        try validate(archive)
         let fileManager = FileManager.default
-        let applicationDirectory = try Self.applicationDirectory()
+        let applicationDirectory = try applicationDirectory()
         let operationDirectory = fileManager.temporaryDirectory
             .appending(path: "JobbBevisRestore-\(UUID().uuidString)", directoryHint: .isDirectory)
         let incomingDirectory = operationDirectory.appending(path: "Incoming", directoryHint: .isDirectory)
         try fileManager.createDirectory(at: incomingDirectory, withIntermediateDirectories: true)
         defer { try? fileManager.removeItem(at: operationDirectory) }
 
-        try stageFiles(for: prepared.archive, at: incomingDirectory)
-        try replaceModels(with: prepared.archive, in: context)
+        try stageFiles(for: archive, at: incomingDirectory)
+        try replaceModels(with: archive, in: context)
 
         do {
-            try replaceManagedFiles(with: prepared.archive, at: applicationDirectory)
+            try replaceManagedFiles(with: archive, at: applicationDirectory)
         } catch {
             try? replaceModels(with: rollbackArchive, in: context)
             try? replaceManagedFiles(with: rollbackArchive, at: applicationDirectory)
@@ -302,10 +333,28 @@ struct BackupService {
         }
     }
 
+    // Retain local company/logo and numbering; import no work or documents from the backup.
+    // replaceModels also retains the device's immutable issued documents.
+    private func registersArchive(from source: BackupArchive, current: BackupArchive) -> BackupArchive {
+        let files = current.files.filter { $0.kind == .logo }
+        return BackupArchive(
+            manifest: BackupManifest(format: "JobbBevis Backup", schemaVersion: Self.schemaVersion,
+                createdAt: source.manifest.createdAt, appVersion: source.manifest.appVersion,
+                counts: BackupCounts(companies: current.companies.count, customers: source.customers.count,
+                    jobs: 0, photos: 0, workEntries: 0, materials: 0, purchases: 0,
+                    products: source.products?.count, invoices: 0, creditNotes: 0, files: files.count)),
+            companies: current.companies, customers: source.customers, jobs: [], photos: [],
+            workEntries: [], materials: [], purchaseItems: [], products: source.products,
+            suppliers: source.suppliers, projectTrades: [], projectParties: [], workPackages: [],
+            invoices: [], creditNotes: [], metadata: current.metadata, files: files)
+    }
+
     private func summary(for archive: BackupArchive) -> BackupSummary {
         BackupSummary(
             createdAt: archive.manifest.createdAt,
             customers: archive.customers.count,
+            suppliers: archive.suppliers?.count ?? 0,
+            products: archive.products?.count ?? 0,
             jobs: archive.jobs.count,
             photos: archive.photos.count,
             workEntries: archive.workEntries.count,
@@ -401,6 +450,16 @@ struct BackupService {
         try requireUnique(archive.metadata.map(\.id))
         try requireUnique(archive.files.map(\.id))
         try requireUnique(archive.files.map(\.archivePath))
+
+        for job in archive.jobs {
+            guard (job.acceptedBidSnapshotData == nil) == (job.acceptedBidAt == nil) else {
+                throw BackupError.invalidReferences
+            }
+            if let data = job.acceptedBidSnapshotData {
+                guard let snapshot = try? JSONDecoder().decode(SalesDocumentSnapshot.self, from: data),
+                      snapshot.jobNumber == job.jobNumber else { throw BackupError.invalidReferences }
+            }
+        }
 
         let customerIDs = Set(archive.customers.map(\.id))
         let jobIDs = Set(archive.jobs.map(\.id))
@@ -570,6 +629,8 @@ struct BackupService {
         let preservedNextCreditNoteSequence = try context.fetch(FetchDescriptor<AppMetadata>())
             .compactMap(\.nextCreditNoteSequence)
             .max() ?? 1
+        let preservedExerciseInvoices = try context.fetch(FetchDescriptor<AppMetadata>()).compactMap(\.nextExerciseInvoiceSequence).max() ?? 1
+        let preservedExerciseCredits = try context.fetch(FetchDescriptor<AppMetadata>()).compactMap(\.nextExerciseCreditNoteSequence).max() ?? 1
         try context.transaction {
             for model in try context.fetch(FetchDescriptor<WorkPackage>()) { context.delete(model) }
             for model in try context.fetch(FetchDescriptor<ProjectParty>()) { context.delete(model) }
@@ -632,6 +693,10 @@ struct BackupService {
                     invoiceDraftDueDate: record.invoiceDraftDueDate,
                     archivedAt: record.archivedAt
                 )
+                job.acceptedBidSnapshotData = record.acceptedBidSnapshotData
+                job.acceptedBidAt = record.acceptedBidAt
+                job.isExercise = record.isExercise ?? false
+                job.combinesInvoiceLines = record.combinesInvoiceLines ?? false
                 job.projectMode = record.projectMode.flatMap(ProjectMode.init(rawValue:)) ?? .simpleJob
                 jobByID[record.id] = job
                 context.insert(job)
@@ -678,7 +743,9 @@ struct BackupService {
                     createdAt: record.createdAt,
                     updatedAt: record.updatedAt,
                     job: job,
-                    unitPrice: record.unitPrice
+                    unitPrice: record.unitPrice,
+                    sourcePurchaseItemID: record.sourcePurchaseItemID,
+                    itemNumber: record.itemNumber
                 ))
             }
 
@@ -696,7 +763,8 @@ struct BackupService {
                     updatedAt: record.updatedAt,
                     transferredMaterialID: record.transferredMaterialID,
                     transferredAt: record.transferredAt,
-                    job: job
+                    job: job,
+                    itemNumber: record.itemNumber
                 ))
             }
 
@@ -833,12 +901,10 @@ struct BackupService {
                     updatedAt: record.updatedAt
                 ))
             }
-            let nextAfterKnownInvoices = invoiceNumbers.compactMap { number in
-                number.split(separator: "-").last.flatMap { Int($0) }
-            }.max().map { $0 + 1 } ?? 1
-            let nextAfterKnownCreditNotes = creditNoteNumbers.compactMap { number in
-                number.split(separator: "-").last.flatMap { Int($0) }
-            }.max().map { $0 + 1 } ?? 1
+            let nextAfterKnownInvoices = SalesDocumentService.nextSequence(after: invoiceNumbers, exercise: false)
+            let nextAfterKnownCreditNotes = SalesDocumentService.nextSequence(after: creditNoteNumbers, exercise: false)
+            let nextExerciseInvoice = SalesDocumentService.nextSequence(after: invoiceNumbers, exercise: true)
+            let nextExerciseCredit = SalesDocumentService.nextSequence(after: creditNoteNumbers, exercise: true)
             for record in archive.metadata {
                 context.insert(AppMetadata(id: record.id, nextJobSequence: record.nextJobSequence,
                                            nextInvoiceSequence: max(
@@ -850,18 +916,26 @@ struct BackupService {
                                                record.nextCreditNoteSequence ?? 1,
                                                preservedNextCreditNoteSequence,
                                                nextAfterKnownCreditNotes
-                                           )))
+                                           ),
+                                           nextExerciseInvoiceSequence: max(record.nextExerciseInvoiceSequence ?? 1, preservedExerciseInvoices, nextExerciseInvoice),
+                                           nextExerciseCreditNoteSequence: max(record.nextExerciseCreditNoteSequence ?? 1, preservedExerciseCredits, nextExerciseCredit)))
             }
             if archive.metadata.isEmpty {
                 context.insert(AppMetadata(
                     nextInvoiceSequence: max(preservedNextInvoiceSequence, nextAfterKnownInvoices),
-                    nextCreditNoteSequence: max(preservedNextCreditNoteSequence, nextAfterKnownCreditNotes)
+                    nextCreditNoteSequence: max(preservedNextCreditNoteSequence, nextAfterKnownCreditNotes),
+                    nextExerciseInvoiceSequence: max(preservedExerciseInvoices, nextExerciseInvoice),
+                    nextExerciseCreditNoteSequence: max(preservedExerciseCredits, nextExerciseCredit)
                 ))
             }
         }
     }
 
-    private static func applicationDirectory() throws -> URL {
+    private func applicationDirectory() throws -> URL {
+        if let applicationDirectoryOverride {
+            try FileManager.default.createDirectory(at: applicationDirectoryOverride, withIntermediateDirectories: true)
+            return applicationDirectoryOverride
+        }
         let support = try FileManager.default.url(
             for: .applicationSupportDirectory,
             in: .userDomainMask,
@@ -1020,6 +1094,10 @@ private struct JobRecordBackup: Codable {
     let hasInvoiceDraft: Bool?
     let invoiceDraftDueDate: Date?
     let archivedAt: Date?
+    let acceptedBidSnapshotData: Data?
+    let acceptedBidAt: Date?
+    let isExercise: Bool?
+    let combinesInvoiceLines: Bool?
     let projectMode: String?
 }
 
@@ -1097,6 +1175,8 @@ private struct MaterialRecord: Codable {
     let createdAt: Date
     let updatedAt: Date
     let unitPrice: Decimal?
+    let sourcePurchaseItemID: UUID?
+    let itemNumber: String?
 }
 
 private struct PurchaseRecord: Codable {
@@ -1104,6 +1184,7 @@ private struct PurchaseRecord: Codable {
     let jobID: UUID
     let supplier: String
     let itemName: String
+    let itemNumber: String?
     let quantity: Decimal
     let unit: String
     let unitPrice: Decimal
@@ -1119,6 +1200,8 @@ private struct MetadataRecord: Codable {
     let nextJobSequence: Int
     let nextInvoiceSequence: Int?
     let nextCreditNoteSequence: Int?
+    let nextExerciseInvoiceSequence: Int?
+    let nextExerciseCreditNoteSequence: Int?
 }
 
 private struct ProductRecord: Codable {

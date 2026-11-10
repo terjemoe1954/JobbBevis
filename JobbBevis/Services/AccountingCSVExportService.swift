@@ -24,6 +24,7 @@ struct AccountingCSVExportService {
     ]
 
     func exportData(invoices: [InvoiceRecord]) throws -> Data {
+        let invoices = invoices.filter { !$0.isExercise }
         guard !invoices.isEmpty else { throw AccountingCSVExportError.noInvoices }
 
         var rows = [header]
@@ -77,6 +78,13 @@ struct AccountingCSVExportService {
     }
 
     private func isoDate(_ date: Date) -> String {
-        date.formatted(.iso8601.year().month().day().dateSeparator(.dash))
+        // Keep the ISO column format while using the same calendar day as the
+        // on-screen invoice and PDF (rather than silently shifting to UTC).
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
     }
 }

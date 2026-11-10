@@ -30,6 +30,24 @@ enum PriceEstimateCalculator {
         )
     }
 
+    /// Matches the basis used by sales documents; the legacy estimate remains
+    /// available for existing report options until that report workflow is updated.
+    static func summary(for job: JobRecord, basis: SalesDocumentService.Basis, isVATRegistered: Bool) -> PriceEstimate {
+        let hours = basis == .estimate ? positive(job.estimatedHours) : registeredHours(for: job)
+        let kilometers = basis == .estimate ? positive(job.drivingKilometers) : registeredKilometers(for: job)
+        let labor = hours * positive(job.hourlyRate)
+        let materials: Decimal
+        if basis == .estimate {
+            materials = job.purchaseItems.reduce(0) { $0 + max(0, $1.quantity) * positive($1.unitPrice) }
+        } else {
+            materials = job.materialEntries.reduce(0) { $0 + max(0, $1.quantity) * positive($1.unitPrice) }
+        }
+        let driving = kilometers * positive(job.drivingRatePerKilometer)
+        let subtotal = labor + materials + driving
+        let vat = isVATRegistered ? subtotal * positive(job.vatRatePercent) / 100 : 0
+        return PriceEstimate(labor: labor, materials: materials, driving: driving, subtotal: subtotal, vat: vat, total: subtotal + vat)
+    }
+
     static func currency(_ value: Decimal, locale: Locale) -> String {
         value.formatted(
             .currency(code: "NOK")

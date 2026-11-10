@@ -1,0 +1,32 @@
+TESTFLIGHT 1.0.2 (7) – PRAKTISK TILBAKEMELDING
+
+8. november 2026, Mac: Registrer brukt mengde
+Brukeren fant ikke ut hvordan mengden kunne redigeres. Feltet viser bare
+foreslått tall 10 når plassholderen «Brukt nå» er borte, og likner de
+skrivebeskyttede oversiktstallene over.
+
+Kontroll i den installerte TestFlight-appen: feltet er redigerbart. Det ble
+fokusert og satt til 2; beregnet beløp oppdaterte seg til 130,00 kr.
+Forbruket ble ikke lagret av assistenten.
+
+Forbedring til neste samlede retting: permanent synlig «Brukt nå»-etikett
+og tydelig innrammet, lett klikkbart mengdefelt. Prøv med vanlig mus og
+tastatur i tillegg til berøring. Denne observasjonen endrer ikke kildekoden
+eller build 7 som venter på Apple-vurdering.
+
+Bekreftet manuelt på Mac av brukeren 8. november 2026:
+- Delregistrering 2 + 8 kg, redigering til 7 kg og tilbake til 8 kg.
+- Planlagt mengde/pris beholdes; brukt og gjenstående oppdateres.
+- Rapport med og uten priser, varenummer og øvelsesmerking.
+- Lagret fakturautkast og PDF; 650 kr eks. MVA / 812,50 kr inkl. MVA.
+- Samling av like materiallinjer gir 10 kg uten endret totalsum.
+- Øvelsesfaktura med TEST-nummer og utelatelse fra vanlig regnskapseksport.
+- Bilde med tekst og kategori; endring av tekst og Før til Underveis.
+
+Klargjort i kildekoden etter build 7:
+Fast etikett «Mengde brukt nå» med enhet, innrammet tallfelt og alltid
+synlig forklaring «Registrer bare mengden du har brukt denne gangen.»
+Registreringslogikk og foreslått mengde er uendret. Endringen er ikke
+med i den installerte build 7. Praktisk kontroll på iPhone gjenstår.
+
+Byggekontroll: macOS arm64, CODE_SIGNING_ALLOWED=NO: BUILD SUCCEEDED.

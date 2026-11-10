@@ -1,0 +1,49 @@
+JOBBBEVIS – SAMLET LEVERANSE 1.0.2 (7)
+Dato: 8. november 2026
+
+Rettelisten etter kjøkkenøvelsen er gjennomgått. Funksjonene i prioritet 1–7
+er implementert, inkludert valgfri samling av like koblede fakturalinjer.
+Detaljer finnes i de øvrige dokumentene under verification.
+
+SAMLET KONTROLL
+- 8 eksisterende tester i JobbBevisTests og 4 i JobbBevisCoreTests bestod
+  i en egen iPhone-simulator. Simulatoren bruker et separat appområde.
+- Ny samlet kontrollkjøring bestod mot alle produksjonsendringene samtidig:
+  deloverføring, retry, redigering/sletting, tilbud/forbruk, akseptert tilbud,
+  fakturautkast, varenummer, rapportvarianter, datokontroll, TEST-serier,
+  regnskapseksport, valgfri samling og full backup/gjenoppretting.
+- Gjenoppretting ble kjørt med egen testmappe. Historiske fakturabytes og
+  ordinære/TEST-tellere ble bevart og kontrollert.
+- Opprinnelige modellkilder ble rekonstruert fra før-endring-sikkerhetskopiene
+  og sjekket mot de opprinnelige SHA-256-sjekksummene. En fiktiv database laget
+  med dem ble oppgradert direkte til alle nye felt, uten endring av historisk
+  fakturakopi, kunde, mengder, koblinger eller ordinær serie.
+- verification/fixtures inneholder bare fiktive migreringsdata.
+- verification/run_release_checks.py kjører de samlede funksjonskontrollene
+  og migrering på en kopi av denne fiktive databasen.
+
+TESTOPPSETT
+Den gamle JobbBevisTests-konfigurasjonen manglet appavhengighet/byggesteg.
+Dette er rettet. En gammel fakturatest brukte bare estimerte timer, mens
+fakturering bruker registrerte timer; testgrunnlaget registrerer nå arbeidet.
+
+KJENTE GRENSER
+Ingen praktisk gjennomgang på fysisk iPhone er gjort med denne builden ennå.
+Ingen reell import eller bokføring i et bestemt regnskapssystem er prøvd.
+Leverandørreskontro, delbetaling og purring er ikke nye funksjoner i leveransen.
+Rapportens Vis priser styrer genererte felt; brukerens fritekst beholdes.
+Samling krever samme innkjøpskilde og identiske nummer/navn/enhet/pris/MVA.
+Ordrebekreftelse med registrert grunnlag kan også bruke denne samlingen.
+Eksisterende innkjøps-/materialposter får ikke identitet automatisk etter navn.
+Gamle øvelser som allerede fikk ordinært nummer omklassifiseres ikke.
+Arkivet bruker prosjektets Swift 5-modus. Kompilatoren gir varsler om
+Codable-aktorisolasjon og eksisterende trailing closures; Swift 6-migrering
+er ikke del av denne leveransen.
+
+DISTRIBUSJON
+Versjon 1.0.2, build 7. Signert arkiv og opplasting til App Store Connect er fullført.
+Arkivmål: Library/Developer/Xcode/Archives/2026-11-08/JobbBevis 1.0.2 (7).xcarchive
+Ingen lokal installasjon eller endring av brukerens database er utført.
+Ekstern gruppe External Beta har build 1.0.2 (7), status Waiting for Review.
+Innsending til betavurdering er bekreftet av brukerens skjermbilde 15:51.
+0 testere var lagt til på dette tidspunktet. Apple har ikke godkjent builden ennå.

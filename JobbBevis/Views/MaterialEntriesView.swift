@@ -89,6 +89,8 @@ struct MaterialEntriesView: View {
 
     private func deletePendingEntry() {
         guard let entryPendingDeletion else { return }
+        // Removing usage updates the source summary; it never changes planned quantity.
+        try? MaterialTransferService.link(entryPendingDeletion, to: nil)
         job.materialEntries.removeAll { $0.id == entryPendingDeletion.id }
         modelContext.delete(entryPendingDeletion)
         job.updatedAt = .now
@@ -114,7 +116,7 @@ private struct MaterialEntryRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(entry.name)
+                Text(entry.displayName)
                     .font(.headline)
                 Spacer()
                 MaterialQuantityView(

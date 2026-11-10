@@ -30,6 +30,18 @@ final class JobRecord {
     var createdAt: Date
     var updatedAt: Date
     var sampleDataMarker: Bool?
+    var exerciseModeMarker: Bool?
+    var combinesInvoiceLinesMarker: Bool?
+
+    var combinesInvoiceLines: Bool {
+        get { combinesInvoiceLinesMarker ?? false }
+        set { combinesInvoiceLinesMarker = newValue ? true : nil }
+    }
+
+    var isExercise: Bool {
+        get { exerciseModeMarker ?? false }
+        set { exerciseModeMarker = newValue ? true : nil }
+    }
     var estimatedHours: Decimal?
     var hourlyRate: Decimal?
     var drivingKilometers: Decimal?
@@ -38,6 +50,12 @@ final class JobRecord {
     var invoiceDraftMarker: Bool?
     var invoiceDraftDueDate: Date?
     var archivedAt: Date?
+    var acceptedBidSnapshotData: Data?
+    var acceptedBidAt: Date?
+
+    var acceptedBidSnapshot: SalesDocumentSnapshot? {
+        acceptedBidSnapshotData.flatMap { try? JSONDecoder().decode(SalesDocumentSnapshot.self, from: $0) }
+    }
     var projectModeRawValue: String?
     var customer: Customer
     @Relationship(deleteRule: .cascade, inverse: \JobPhoto.job)
@@ -127,6 +145,8 @@ final class JobRecord {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.sampleDataMarker = isSampleData ? true : nil
+        self.exerciseModeMarker = nil
+        self.combinesInvoiceLinesMarker = nil
         self.estimatedHours = estimatedHours
         self.hourlyRate = hourlyRate
         self.drivingKilometers = drivingKilometers
@@ -135,6 +155,8 @@ final class JobRecord {
         self.invoiceDraftMarker = hasInvoiceDraft ? true : nil
         self.invoiceDraftDueDate = hasInvoiceDraft ? invoiceDraftDueDate : nil
         self.archivedAt = archivedAt
+        self.acceptedBidSnapshotData = nil
+        self.acceptedBidAt = nil
         self.projectModeRawValue = nil
         self.photos = photos
         self.workEntries = workEntries
@@ -152,16 +174,22 @@ final class AppMetadata {
     var nextJobSequence: Int
     var nextInvoiceSequence: Int?
     var nextCreditNoteSequence: Int?
+    var nextExerciseInvoiceSequence: Int?
+    var nextExerciseCreditNoteSequence: Int?
 
     init(
         id: String = "main",
         nextJobSequence: Int = 1,
         nextInvoiceSequence: Int = 1,
-        nextCreditNoteSequence: Int = 1
+        nextCreditNoteSequence: Int = 1,
+        nextExerciseInvoiceSequence: Int = 1,
+        nextExerciseCreditNoteSequence: Int = 1
     ) {
         self.id = id
         self.nextJobSequence = nextJobSequence
         self.nextInvoiceSequence = nextInvoiceSequence
         self.nextCreditNoteSequence = nextCreditNoteSequence
+        self.nextExerciseInvoiceSequence = nextExerciseInvoiceSequence
+        self.nextExerciseCreditNoteSequence = nextExerciseCreditNoteSequence
     }
 }
