@@ -1,6 +1,7 @@
 import PhotosUI
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -9,6 +10,7 @@ struct SettingsView: View {
     @AppStorage(PreferenceKey.appearance) private var appearanceRawValue = AppAppearance.system.rawValue
     @AppStorage(PreferenceKey.validatesNorwegianNumbers) private var validatesNorwegianNumbers = true
     @State private var selectedPhoto: PhotosPickerItem?
+    @State private var isImportingLogoFile = false
     @State private var errorMessage: String?
     @State private var isConfirmingDeleteAllData = false
 
@@ -21,10 +23,15 @@ struct SettingsView: View {
             CompanyProfileSection(
                 profile: profile,
                 selectedPhoto: $selectedPhoto,
+                chooseLogoFile: { isImportingLogoFile = true },
                 validatesNorwegianNumbers: validatesNorwegianNumbers,
                 save: saveProfile,
                 removeLogo: removeLogo
             )
+
+            Section("JobbBevis") {
+                NavigationLink("See Free and Plus") { PlusView() }
+            }
 
             Section("Catalog") {
                 NavigationLink {
@@ -92,6 +99,21 @@ struct SettingsView: View {
         .task(id: selectedPhoto) {
             await importSelectedLogo()
         }
+        .fileImporter(
+            isPresented: $isImportingLogoFile,
+            allowedContentTypes: [.image],
+            allowsMultipleSelection: false
+        ) { result in
+            do {
+                guard let url = try result.get().first else { return }
+                let hasAccess = url.startAccessingSecurityScopedResource()
+                defer { if hasAccess { url.stopAccessingSecurityScopedResource() } }
+                let data = try Data(contentsOf: url)
+                try saveImportedLogo(data)
+            } catch {
+                errorMessage = String(localized: "The logo could not be saved. \(error.localizedDescription)")
+            }
+        }
         .alert("Could not save changes", isPresented: errorBinding) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -142,31 +164,39 @@ struct SettingsView: View {
     }
 
     private func importSelectedLogo() async {
-        guard let selectedPhoto, let profile else { return }
-        let oldRelativePath = profile.logoRelativePath
-        var newRelativePath: String?
+        guard let selectedPhoto else { return }
+        defer { self.selectedPhoto = nil }
         do {
             guard let data = try await selectedPhoto.loadTransferable(type: Data.self) else {
                 throw LogoImportError.noData
             }
-            newRelativePath = try ManagedFileStore().saveLogo(
-                data,
-                replacing: nil
-            )
+            try saveImportedLogo(data)
+        } catch {
+            errorMessage = String(localized: "The logo could not be saved. \(error.localizedDescription)")
+        }
+    }
+
+    private func saveImportedLogo(_ data: Data) throws {
+        guard let profile, let image = UIImage(data: data),
+              image.size.width > 0, image.size.height > 0 else {
+            throw LogoImportError.noData
+        }
+        let oldRelativePath = profile.logoRelativePath
+        let oldUpdatedAt = profile.updatedAt
+        let newRelativePath = try ManagedFileStore().saveLogo(data, replacing: nil)
+        do {
             profile.logoRelativePath = newRelativePath
             profile.updatedAt = .now
             try modelContext.save()
-            if let oldRelativePath {
-                try? ManagedFileStore().removeFile(relativePath: oldRelativePath)
-            }
         } catch {
             profile.logoRelativePath = oldRelativePath
-            if let newRelativePath {
-                try? ManagedFileStore().removeFile(relativePath: newRelativePath)
-            }
-            errorMessage = String(localized: "The logo could not be saved. \(error.localizedDescription)")
+            profile.updatedAt = oldUpdatedAt
+            try? ManagedFileStore().removeFile(relativePath: newRelativePath)
+            throw error
         }
-        self.selectedPhoto = nil
+        if let oldRelativePath {
+            try? ManagedFileStore().removeFile(relativePath: oldRelativePath)
+        }
     }
 
     private func removeLogo() {
@@ -201,6 +231,7 @@ private struct CompanyProfileSection: View {
     @Environment(\.locale) private var locale
     let profile: CompanyProfile?
     @Binding var selectedPhoto: PhotosPickerItem?
+    let chooseLogoFile: () -> Void
     let validatesNorwegianNumbers: Bool
     let save: () -> Void
     let removeLogo: () -> Void
@@ -217,7 +248,14 @@ private struct CompanyProfileSection: View {
             if let profile {
                 LogoView(relativePath: profile.logoRelativePath)
 
-                PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                Menu {
+                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                        Label("Choose from Photos", systemImage: "photo")
+                    }
+                    Button(action: chooseLogoFile) {
+                        Label("Choose from Files", systemImage: "folder")
+                    }
+                } label: {
                     Label(
                         profile.logoRelativePath == nil ? "Choose logo" : "Change logo",
                         systemImage: "photo"

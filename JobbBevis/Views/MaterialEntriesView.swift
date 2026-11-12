@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct MaterialEntriesView: View {
+    @Environment(\.canEditJob) private var canEditJob
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
     let job: JobRecord
@@ -19,7 +20,7 @@ struct MaterialEntriesView: View {
     var body: some View {
         Group {
             if orderedEntries.isEmpty {
-                MaterialEmptyState(addEntry: { isAddingEntry = true })
+                MaterialEmptyState(addEntry: { if canEditJob { isAddingEntry = true } }).disabled(!canEditJob)
             } else {
                 List {
                     ForEach(orderedEntries) { entry in
@@ -31,8 +32,8 @@ struct MaterialEntriesView: View {
                         .buttonStyle(.plain)
                         .swipeActions {
                             Button("Delete", systemImage: "trash", role: .destructive) {
-                                entryPendingDeletion = entry
-                            }
+                                if canEditJob { entryPendingDeletion = entry }
+                            }.disabled(!canEditJob)
                         }
                     }
                     .onDelete(perform: requestDeletion)
@@ -43,11 +44,11 @@ struct MaterialEntriesView: View {
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 if !orderedEntries.isEmpty {
-                    EditButton()
+                    EditButton().disabled(!canEditJob)
                 }
                 Button("Add material", systemImage: "plus") {
-                    isAddingEntry = true
-                }
+                    if canEditJob { isAddingEntry = true }
+                }.disabled(!canEditJob)
             }
         }
         .sheet(isPresented: $isAddingEntry) {
@@ -88,6 +89,7 @@ struct MaterialEntriesView: View {
     }
 
     private func deletePendingEntry() {
+        guard canEditJob else { return }
         guard let entryPendingDeletion else { return }
         // Removing usage updates the source summary; it never changes planned quantity.
         try? MaterialTransferService.link(entryPendingDeletion, to: nil)
@@ -104,6 +106,7 @@ struct MaterialEntriesView: View {
     }
 
     private func requestDeletion(at offsets: IndexSet) {
+        guard canEditJob else { return }
         guard let index = offsets.first, orderedEntries.indices.contains(index) else { return }
         entryPendingDeletion = orderedEntries[index]
     }

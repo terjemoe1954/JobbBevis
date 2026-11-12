@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct WorkEntriesView: View {
+    @Environment(\.canEditJob) private var canEditJob
     @Environment(\.modelContext) private var modelContext
     let job: JobRecord
     @State private var selectedEntry: WorkEntry?
@@ -24,7 +25,7 @@ struct WorkEntriesView: View {
     var body: some View {
         Group {
             if orderedEntries.isEmpty {
-                WorkEmptyState(addEntry: { isAddingEntry = true })
+                WorkEmptyState(addEntry: { if canEditJob { isAddingEntry = true } }).disabled(!canEditJob)
             } else {
                 List {
                     Section {
@@ -37,8 +38,8 @@ struct WorkEntriesView: View {
                             .buttonStyle(.plain)
                             .swipeActions {
                                 Button("Delete", systemImage: "trash", role: .destructive) {
-                                    entryPendingDeletion = entry
-                                }
+                                    if canEditJob { entryPendingDeletion = entry }
+                                }.disabled(!canEditJob)
                             }
                         }
                         .onDelete(perform: requestDeletion)
@@ -57,11 +58,11 @@ struct WorkEntriesView: View {
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 if !orderedEntries.isEmpty {
-                    EditButton()
+                    EditButton().disabled(!canEditJob)
                 }
                 Button("Add work entry", systemImage: "plus") {
-                    isAddingEntry = true
-                }
+                    if canEditJob { isAddingEntry = true }
+                }.disabled(!canEditJob)
             }
         }
         .sheet(isPresented: $isAddingEntry) {
@@ -102,6 +103,7 @@ struct WorkEntriesView: View {
     }
 
     private func deletePendingEntry() {
+        guard canEditJob else { return }
         guard let entryPendingDeletion else { return }
         job.workEntries.removeAll { $0.id == entryPendingDeletion.id }
         modelContext.delete(entryPendingDeletion)
@@ -116,6 +118,7 @@ struct WorkEntriesView: View {
     }
 
     private func requestDeletion(at offsets: IndexSet) {
+        guard canEditJob else { return }
         guard let index = offsets.first, orderedEntries.indices.contains(index) else { return }
         entryPendingDeletion = orderedEntries[index]
     }

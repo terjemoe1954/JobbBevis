@@ -2,6 +2,8 @@ import SwiftData
 import SwiftUI
 
 struct PurchaseItemFormView: View {
+    @Environment(AccessStore.self) private var access
+    @Environment(\.canEditJob) private var canEditJob
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
     @Environment(\.modelContext) private var modelContext
@@ -45,6 +47,7 @@ struct PurchaseItemFormView: View {
         NavigationStack {
             Form {
                 Section("Purchase item") {
+                    if access.hasPlus {
                     Picker("Product catalog", selection: $selectedCatalogProductID) {
                         Text("Choose product").tag(UUID?.none)
                         ForEach(catalogProducts) { product in
@@ -54,6 +57,8 @@ struct PurchaseItemFormView: View {
                     }
                     .onChange(of: selectedCatalogProductID) { _, newValue in
                         applyCatalogProduct(id: newValue)
+                    }
+
                     }
 
                     TextField("Supplier", text: $supplier)
@@ -77,10 +82,13 @@ struct PurchaseItemFormView: View {
                     TextField("Note", text: $note, axis: .vertical)
                         .lineLimit(2...5)
 
+                    if access.hasPlus {
                     if selectedCatalogProductID != nil {
                         Toggle("Update selected product in catalog", isOn: $updatesCatalogProduct)
                     } else {
                         Toggle("Save as new product in catalog", isOn: $savesAsNewCatalogProduct)
+                    }
+
                     }
 
                     if let validationMessage {
@@ -90,13 +98,14 @@ struct PurchaseItemFormView: View {
                     }
                 }
             }
+            .disabled(!canEditJob)
             .navigationTitle(item == nil ? "New purchase item" : "Edit purchase item")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save", action: save)
+                    Button("Save", action: save).disabled(!canEditJob)
                 }
             }
             .onAppear(perform: formatExistingValues)
@@ -140,6 +149,12 @@ struct PurchaseItemFormView: View {
     }
 
     private func save() {
+        if !access.hasPlus {
+            selectedCatalogProductID = nil
+            updatesCatalogProduct = false
+            savesAsNewCatalogProduct = false
+        }
+        guard canEditJob else { return }
         let trimmedSupplier = supplier.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedName = itemName.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolvedUnit = selectedUnit == "custom"

@@ -13,6 +13,8 @@ enum AppSection: Hashable {
 }
 
 struct AppRootView: View {
+    @Environment(AccessStore.self) private var access
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
     @AppStorage(PreferenceKey.language) private var languageRawValue = AppLanguage.system.rawValue
     @AppStorage(PreferenceKey.appearance) private var appearanceRawValue = AppAppearance.system.rawValue
@@ -65,19 +67,23 @@ struct AppRootView: View {
             case .invoices:
                 InvoicesView()
             case .accounting:
-                AccountingTransferView()
+                NavigationStack { PlusFeatureView(title: "Export to accounting") { AccountingTransferView() } }
             case .products:
                 NavigationStack { ProductCatalogView() }
             case .suppliers:
                 NavigationStack { SuppliersView() }
             case .reports:
-                NavigationStack { DirectoryReportsView() }
+                NavigationStack { PlusFeatureView(title: "Reports") { DirectoryReportsView() } }
             case .settings:
                 SettingsView()
             }
         }
         .preferredColorScheme(appearance.colorScheme)
         .environment(\.locale, language.locale ?? .autoupdatingCurrent)
+        .task { await access.start() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await access.refreshPurchases() } }
+        }
         .task {
             try? DataMigrationService.migrateLegacyCatalogData(in: modelContext)
         }

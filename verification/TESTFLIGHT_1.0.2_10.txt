@@ -1,0 +1,30 @@
+JOBBBEVIS 1.0.2 (10) – BEDRE BILDEOPPSETT I PDF-RAPPORTER
+
+Bildedelen bruker to kolonner og proporsjonale bilder. Bildetekster måles
+før sideskift. Ekstra lange bildetekster får full bredde og kan fortsette
+på neste side uten å miste tekst.
+
+Hva bør testes:
+- Lag oppdragsrapport med flere stående og liggende bilder.
+- Kontroller at hele bildet, bildeteksten og registreringsdatoen vises.
+- Prøv lang bildetekst og rapporter med og uten priser.
+- Kontroller forhåndsvisning, deling og utskrift på iPhone og iPad.
+
+Validering 11. november 2026:
+- Fiktiv rapport med 24 arbeidslinjer, 32 materiallinjer og seks bilder:
+  13 sider mot tidligere 16; bildedelen redusert fra fem til to sider.
+- Alle linjer og seks bilder bevart; registrert total 34 000 kr inkl. mva.
+- Visuell kontroll og maskinell kontroll av marger, bildeproporsjoner,
+  komplette bildetekster og avstand til sidenummer bestått.
+- Samlede funksjons- og originalskjema-migrasjonstester bestått.
+- iOS-simulatorbygg bestått. Oppdatert app startet på iPad Pro 13.
+- Fysisk utskrift og kontroll av denne endringen på fysisk enhet gjenstår.
+
+Status: Opplastet 11. november 2026. Apple-behandling fullført.
+Internal-gruppen (Terje Moe, 1 tester): Testing. Testbeskrivelse lagret.
+Sendt til ekstern betagodkjenning 11. november 2026.
+External Beta: Approved, bekreftet i App Store Connect.
+Automatisk varsling aktivert; eksisterende offentlig lenke beholdt.
+Distribusjonssignatur kontrollert; get-task-allow = false.
+Arkiv: /Users/terjemoe/Library/Developer/Xcode/Archives/2026-11-11/JobbBevis 1.0.2 (10).xcarchive
+IPA: verification/TestFlight-1.0.2-10/JobbBevis.ipa

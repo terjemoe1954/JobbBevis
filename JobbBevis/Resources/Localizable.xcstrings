@@ -1,6 +1,893 @@
 {
   "sourceLanguage": "en",
   "strings": {
+"Choose from Photos": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Choose from Photos"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Velg fra Bilder"
+      }
+    }
+  }
+},
+"Get Plus": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Get Plus"
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Få Pluss"
+        }
+      }
+    }
+  },
+  "Plus is unlocked": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Plus is unlocked"
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Pluss er låst opp"
+        }
+      }
+    }
+  },
+  "Checking purchases…": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Checking purchases…"
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Kontrollerer kjøp …"
+        }
+      }
+    }
+  },
+  "Loading price…": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Loading price…"
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Henter pris …"
+        }
+      }
+    }
+  },
+  "Unlock Plus · %@": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Unlock Plus · %@"
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Lås opp Pluss · %@"
+        }
+      }
+    }
+  },
+  "One-time purchase. No subscription. The final price is shown in Apple's purchase confirmation.": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "One-time purchase. No subscription. The final price is shown in Apple's purchase confirmation."
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Engangskjøp uten abonnement. Endelig pris vises i Apples kjøpsbekreftelse."
+        }
+      }
+    }
+  },
+  "Plus is currently unavailable. Please try again later.": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Plus is currently unavailable. Please try again later."
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Pluss er ikke tilgjengelig akkurat nå. Prøv igjen senere."
+        }
+      }
+    }
+  },
+  "Reload price": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Reload price"
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Hent pris på nytt"
+        }
+      }
+    }
+  },
+  "Restore purchases": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Restore purchases"
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Gjenopprett kjøp"
+        }
+      }
+    }
+  },
+  "Contacting Apple…": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Contacting Apple…"
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Kontakter Apple …"
+        }
+      }
+    }
+  },
+  "Apple purchases": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Apple purchases"
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Apple-kjøp"
+        }
+      }
+    }
+  },
+  "Apple could not verify this purchase. Your stored data is unchanged. Please try restoring purchases.": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Apple could not verify this purchase. Your stored data is unchanged. Please try restoring purchases."
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Apple kunne ikke bekrefte kjøpet. Lagrede data er uendret. Prøv å gjenopprette kjøp."
+        }
+      }
+    }
+  },
+  "The purchase could not be completed. Please try again.": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "The purchase could not be completed. Please try again."
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Kjøpet kunne ikke fullføres. Prøv igjen."
+        }
+      }
+    }
+  },
+  "Plus is now unlocked. Thank you!": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Plus is now unlocked. Thank you!"
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Pluss er nå låst opp. Takk!"
+        }
+      }
+    }
+  },
+  "The purchase is awaiting approval. Plus will unlock automatically when Apple confirms it.": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "The purchase is awaiting approval. Plus will unlock automatically when Apple confirms it."
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Kjøpet venter på godkjenning. Pluss låses opp automatisk når Apple bekrefter kjøpet."
+        }
+      }
+    }
+  },
+  "Your Plus purchase has been restored.": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Your Plus purchase has been restored."
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Pluss-kjøpet ditt er gjenopprettet."
+        }
+      }
+    }
+  },
+  "No Plus purchase was found for this Apple Account. Your stored data is unchanged.": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "No Plus purchase was found for this Apple Account. Your stored data is unchanged."
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Fant ikke noe Pluss-kjøp for denne Apple-kontoen. Lagrede data er uendret."
+        }
+      }
+    }
+  },
+
+"Complete your current job to create the next one for free. You can still read and export completed jobs.": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Complete your current job to create the next one for free. You can still read and export completed jobs."
+        }
+      },
+      "nb": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Fullfør det aktive oppdraget for å starte det neste gratis. Du kan fortsatt lese og eksportere fullførte oppdrag."
+        }
+      }
+    }
+  },
+
+"JobbBevis Plus": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "JobbBevis Plus"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "JobbBevis Pluss"
+      }
+    }
+  }
+},
+"JobbBevis Free": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "JobbBevis Free"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "JobbBevis Gratis"
+      }
+    }
+  }
+},
+"Your jobs, photos, invoices and reports are kept when your access changes.": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Your jobs, photos, invoices and reports are kept when your access changes."
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Oppdrag, bilder, fakturaer og rapporter beholdes når tilgangen din endres."
+      }
+    }
+  }
+},
+"Included for free": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Included for free"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Inkludert gratis"
+      }
+    }
+  }
+},
+"One active job at a time": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "One active job at a time"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Ett aktivt oppdrag om gangen"
+      }
+    }
+  }
+},
+"Unlimited customers, work entries, materials and photos": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Unlimited customers, work entries, materials and photos"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Ubegrenset antall kunder, timeregistreringer, materialer og bilder"
+      }
+    }
+  }
+},
+"PDF reports, sharing and printing without a watermark": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "PDF reports, sharing and printing without a watermark"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "PDF-rapporter, deling og utskrift uten vannmerke"
+      }
+    }
+  }
+},
+"Backup and restore": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Backup and restore"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Sikkerhetskopiering og gjenoppretting"
+      }
+    }
+  }
+},
+"Read and export earlier jobs and issued documents": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Read and export earlier jobs and issued documents"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Les og eksporter tidligere oppdrag og utstedte dokumenter"
+      }
+    }
+  }
+},
+"Included with Plus": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Included with Plus"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Inkludert med Pluss"
+      }
+    }
+  }
+},
+"Unlimited active jobs": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Unlimited active jobs"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Ubegrenset antall aktive oppdrag"
+      }
+    }
+  }
+},
+"Invoices and credit notes": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Invoices and credit notes"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Fakturaer og kreditnotaer"
+      }
+    }
+  }
+},
+"Accounting export and summary reports": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Accounting export and summary reports"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Regnskapseksport og samlerapporter"
+      }
+    }
+  }
+},
+"Reusable product catalog and prices": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Reusable product catalog and prices"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Gjenbrukbar produktkatalog og priser"
+      }
+    }
+  }
+},
+"Purchases are not available yet. The payment model and price will be decided later.": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Purchases are not available yet. The payment model and price will be decided later."
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Kjøp er ikke tilgjengelig ennå. Betalingsmodell og pris blir bestemt senere."
+      }
+    }
+  }
+},
+"Development testing": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Development testing"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Utviklingstest"
+      }
+    }
+  }
+},
+"Test access": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Test access"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Test tilgang"
+      }
+    }
+  }
+},
+"Free": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Free"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Gratis"
+      }
+    }
+  }
+},
+"Plus": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Plus"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Pluss"
+      }
+    }
+  }
+},
+"For this development session only. No purchase is made. Release builds do not include this control.": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "For this development session only. No purchase is made. Release builds do not include this control."
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Gjelder bare denne utviklingsøkten. Ingen kjøp utføres. Utgivelsesbygg har ikke dette valget."
+      }
+    }
+  }
+},
+"This feature requires JobbBevis Plus. Your existing data is kept. Job PDF reports and backup remain free.": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "This feature requires JobbBevis Plus. Your existing data is kept. Job PDF reports and backup remain free."
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Denne funksjonen krever JobbBevis Pluss. Eksisterende data beholdes. PDF-rapporter for oppdrag og sikkerhetskopiering er fortsatt gratis."
+      }
+    }
+  }
+},
+"See Free and Plus": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "See Free and Plus"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Se Gratis og Pluss"
+      }
+    }
+  }
+},
+"Free: one active job": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Free: one active job"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Gratis: ett aktivt oppdrag"
+      }
+    }
+  }
+},
+"All jobs are kept. Choose the one to edit for free. Complete it before choosing another.": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "All jobs are kept. Choose the one to edit for free. Complete it before choosing another."
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Alle oppdrag beholdes. Velg hvilket du vil redigere gratis. Fullfør det før du velger et annet."
+      }
+    }
+  }
+},
+"Choose active job": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Choose active job"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Velg aktivt oppdrag"
+      }
+    }
+  }
+},
+"This job is read-only. All entries, photos and PDF reports remain available.": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "This job is read-only. All entries, photos and PDF reports remain available."
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Dette oppdraget er skrivebeskyttet. Alle registreringer, bilder og PDF-rapporter er fortsatt tilgjengelige."
+      }
+    }
+  }
+},
+"Reopen job": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Reopen job"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Gjenåpne oppdrag"
+      }
+    }
+  }
+},
+"Complete job": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Complete job"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Fullfør oppdrag"
+      }
+    }
+  }
+},
+"All entries and photos are kept. Completing the job frees the active job slot in Free.": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "All entries and photos are kept. Completing the job frees the active job slot in Free."
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Alle registreringer og bilder beholdes. Når du fullfører oppdraget, kan du starte et nytt gratisoppdrag."
+      }
+    }
+  }
+},
+"Existing invoices and credit notes remain available. Creating new invoices and credit notes requires Plus.": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Existing invoices and credit notes remain available. Creating new invoices and credit notes requires Plus."
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Eksisterende fakturaer og kreditnotaer er fortsatt tilgjengelige. Nye fakturaer og kreditnotaer krever Pluss."
+      }
+    }
+  }
+},
+"Use the free job PDF as invoice basis in your own invoicing system. Creating invoices in JobbBevis requires Plus.": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Use the free job PDF as invoice basis in your own invoicing system. Creating invoices in JobbBevis requires Plus."
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Bruk den gratis oppdragsrapporten som fakturagrunnlag i eget fakturasystem. Fakturering i JobbBevis krever Pluss."
+      }
+    }
+  }
+},
+"Your saved draft is kept.": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Your saved draft is kept."
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Det lagrede utkastet ditt beholdes."
+      }
+    }
+  }
+},
+"Mark job as completed?": {
+  "extractionState": "manual",
+  "localizations": {
+    "en": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Mark job as completed?"
+      }
+    },
+    "nb": {
+      "stringUnit": {
+        "state": "translated",
+        "value": "Fullføre oppdraget?"
+      }
+    }
+  }
+},
+
 "Products": {
   "localizations": {
     "nb": {

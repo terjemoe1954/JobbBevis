@@ -2,6 +2,8 @@ import SwiftData
 import SwiftUI
 
 struct JobFormView: View {
+    @Environment(AccessStore.self) private var access
+    @State private var showsPlus = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
@@ -108,6 +110,7 @@ struct JobFormView: View {
                     Button("Save", action: save)
                 }
             }
+            .sheet(isPresented: $showsPlus) { PlusSheet() }
             .sheet(isPresented: $isAddingCustomer) {
                 CustomerFormView { customer in
                     selectedCustomerID = customer.id
@@ -168,6 +171,7 @@ struct JobFormView: View {
         } else { persist() }
     }
     private func persist() {
+        guard access.policy.canSave(job, status: status, in: jobs) else { showsPlus = true; return }
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         showTitleError = trimmedTitle.isEmpty
         showCustomerError = selectedCustomer == nil
@@ -217,6 +221,7 @@ struct JobFormView: View {
             savedJob.vatRatePercent = vatRate
             savedJob.updatedAt = .now
             try modelContext.save()
+            if !access.hasPlus && savedJob.status != .completed { access.selectedJobID = savedJob.id }
             dismiss()
         } catch {
             modelContext.rollback()

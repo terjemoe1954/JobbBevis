@@ -8,6 +8,10 @@ enum SalesDocumentWorkflow {
 }
 
 struct SalesDocumentsView: View {
+    @Environment(AccessStore.self) private var access
+    @Query private var jobs: [JobRecord]
+    @State private var showsPlus = false
+    private var canEdit: Bool { access.policy.canEdit(job, in: jobs) }
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
     @Query private var profiles: [CompanyProfile]
@@ -41,15 +45,15 @@ struct SalesDocumentsView: View {
                         Text("The accepted copy is preserved. Current estimates and registered usage do not change it.")
                             .font(.footnote).foregroundStyle(.secondary)
                     } else if preparedBid != nil {
-                        Button("Record customer acceptance", systemImage: "checkmark.seal") { confirmsAcceptedBid = true }
+                        Button("Record customer acceptance", systemImage: "checkmark.seal") { if canEdit { confirmsAcceptedBid = true } else { showsPlus = true } }
                         Text("Record acceptance only after the customer has accepted the bid you just previewed.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     Button("Edit estimate", systemImage: "pencil") {
-                        isEditingInvoiceBasis = true
+                        if canEdit { isEditingInvoiceBasis = true } else { showsPlus = true }
                     }
                     NavigationLink {
-                        PurchaseListView(job: job)
+                        PurchaseListView(job: job).jobEditingAccess(for: job)
                     } label: {
                         Label("Edit purchase list", systemImage: "cart")
                     }
@@ -66,7 +70,14 @@ struct SalesDocumentsView: View {
                 }
             } else {
                 Section("Invoice") {
-                    if let invoice = invoices.first {
+                    if !access.hasPlus && invoices.isEmpty {
+                        Text("Use the free job PDF as invoice basis in your own invoicing system. Creating invoices in JobbBevis requires Plus.")
+                        if job.hasInvoiceDraft {
+                            Button("Preview invoice draft", systemImage: "doc.text.magnifyingglass", action: previewDraft)
+                            Text("Your saved draft is kept.")
+                        }
+                        Button("See Free and Plus") { showsPlus = true }
+                    } else if let invoice = invoices.first {
                         Button("Open invoice copy", systemImage: "doc.on.doc") {
                             open(invoice, isCopy: true)
                         }
@@ -87,7 +98,7 @@ struct SalesDocumentsView: View {
                         Text("Only usage linked to the same purchase item with identical item number, name, unit and price is combined. Original registrations are kept.")
                             .font(.footnote).foregroundStyle(.secondary)
                         Button("Edit invoice basis", systemImage: "pencil") {
-                            isEditingInvoiceBasis = true
+                            if canEdit { isEditingInvoiceBasis = true } else { showsPlus = true }
                         }
                         DatePicker("Due date", selection: $dueDate, displayedComponents: .date)
                         Button("Save draft", systemImage: "square.and.arrow.down", action: saveDraft)
@@ -128,6 +139,7 @@ struct SalesDocumentsView: View {
                 }
             }
         }
+        .environment(\.canEditJob, canEdit)
         .navigationTitle(navigationTitle)
         .confirmationDialog("Approve and issue invoice?", isPresented: $showsInvoiceConfirmation, titleVisibility: .visible) {
             Button("Approve and issue", action: issueInvoice)
@@ -149,6 +161,7 @@ struct SalesDocumentsView: View {
         } message: {
             Text("Only the draft is deleted. The job and its entries are kept.")
         }
+        .sheet(isPresented: $showsPlus) { PlusSheet() }
         .sheet(item: $preview) { preview in
             PDFPreviewView(pdfURL: preview.url, title: preview.title)
         }
@@ -201,6 +214,7 @@ struct SalesDocumentsView: View {
     }
 
     private func recordAcceptance() {
+        guard canEdit else { showsPlus = true; return }
         guard let preparedBid else { return }
         do {
             try SalesDocumentService.recordAcceptedBid(preparedBid, for: job, in: modelContext)
@@ -249,6 +263,7 @@ struct SalesDocumentsView: View {
 
     private var invoiceGroupingBinding: Binding<Bool> {
         Binding(get: { job.combinesInvoiceLines }, set: { value in
+            guard access.hasPlus else { return }
             job.combinesInvoiceLines = value
             job.updatedAt = .now
             draftSavedMessage = nil
@@ -270,6 +285,7 @@ struct SalesDocumentsView: View {
     }
 
     private func issueInvoice() {
+        guard access.hasPlus else { showsPlus = true; return }
         guard let company = profiles.first else {
             errorMessage = String(localized: "Complete the company profile in Settings first.")
             return
@@ -290,18 +306,21 @@ struct SalesDocumentsView: View {
     }
 
     private func createDraft() {
+        guard access.hasPlus else { showsPlus = true; return }
         job.hasInvoiceDraft = true
         job.invoiceDraftDueDate = dueDate
         saveDraftChanges()
     }
 
     private func saveDraft() {
+        guard access.hasPlus else { showsPlus = true; return }
         job.invoiceDraftDueDate = dueDate
         job.updatedAt = .now
         saveDraftChanges()
     }
 
     private func deleteDraft() {
+        guard access.hasPlus else { showsPlus = true; return }
         job.hasInvoiceDraft = false
         saveDraftChanges()
     }

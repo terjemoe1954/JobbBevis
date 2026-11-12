@@ -3,7 +3,7 @@
 from pathlib import Path
 import json, plistlib, subprocess, tempfile, shutil
 root=Path(__file__).resolve().parents[1]
-checks=['MaterialTransferChecks','InvoiceDraftChecks','PriceSeparationChecks','ItemNumberChecks','ReportPriceChecks','ExerciseDateChecks','AccountingSelectionChecks','RegisterImportChecks']
+checks=['PlusPurchaseChecks','AccessPolicyChecks','MaterialTransferChecks','InvoiceDraftChecks','PriceSeparationChecks','ItemNumberChecks','ReportPriceChecks','ExerciseDateChecks','AccountingSelectionChecks','RegisterImportChecks']
 folder=Path(tempfile.mkdtemp(prefix='JobbBevis-Release-Checks-'))
 bundle=folder/'ReleaseChecks.app'/'Contents'
 (bundle/'MacOS').mkdir(parents=True)
@@ -23,13 +23,13 @@ source.append((root/'verification/ReleaseIntegrationChecks.swift').read_text())
 source.append('@main struct ReleaseChecks { @MainActor static func main() async throws {')
 for name in checks:
     source.append('print("Checking '+name+'")')
-    source.append(('try await ' if name=='ReportPriceChecks' else 'try ')+name+'.run()')
+    source.append(('try await ' if name in ['ReportPriceChecks','PlusPurchaseChecks'] else 'try ')+name+'.run()')
 source.append('try ReleaseIntegrationChecks.run(); print("ALL RELEASE CHECKS PASSED") } }')
 merged=folder/'ReleaseChecks.swift';merged.write_text('\n'.join(source))
 sdk=subprocess.check_output(['xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip()
 sources=sorted((root/'JobbBevis/Models').glob('*.swift'))
 sources += [root/'JobbBevis/Config'/name for name in ['EntryFormatting.swift','AppPreferences.swift','NorwegianNumberValidator.swift']]
-sources += [root/'JobbBevis/Services'/name for name in ['PriceEstimateCalculator.swift','JobDateValidation.swift','SalesDocumentService.swift','MaterialTransferService.swift','PDFReportService.swift','AccountingCSVExportService.swift','AccountingReportPDFService.swift','AccountingExportSelection.swift','BackupService.swift','ManagedFileStore.swift','PhotoFileStore.swift']]
+sources += [root/'JobbBevis/Services'/name for name in ['JobAccessPolicy.swift','AccessStore.swift','PlusStorefront.swift','PriceEstimateCalculator.swift','JobDateValidation.swift','SalesDocumentService.swift','MaterialTransferService.swift','PDFReportService.swift','AccountingCSVExportService.swift','AccountingReportPDFService.swift','AccountingExportSelection.swift','BackupService.swift','ManagedFileStore.swift','PhotoFileStore.swift']]
 executable=bundle/'MacOS'/'ReleaseChecks'
 command=['xcrun','swiftc','-sdk',sdk,'-target','arm64-apple-ios17.0-macabi','-F',sdk+'/System/iOSSupport/System/Library/Frameworks','-I',sdk+'/System/iOSSupport/usr/include',*map(str,sources),str(merged),'-o',str(executable)]
 subprocess.run(command,check=True,cwd=root)

@@ -6,6 +6,7 @@ import UIKit
 import UniformTypeIdentifiers
 
 struct AddPhotoView: View {
+    @Environment(\.canEditJob) private var canEditJob
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openURL) private var openURL
@@ -60,14 +61,14 @@ struct AddPhotoView: View {
                 }
             }
             .navigationTitle("Add photos")
-            .disabled(isImporting)
+            .disabled(isImporting || !canEditJob)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Import", action: importSelectedItems)
-                        .disabled(selectedItems.isEmpty || isImporting)
+                        .disabled(selectedItems.isEmpty || isImporting || !canEditJob)
                 }
             }
             .fileImporter(
@@ -210,6 +211,7 @@ struct AddPhotoView: View {
     }
 
     private func save(_ dataItems: [Data]) async throws {
+        guard canEditJob else { throw CancellationError() }
         var createdPhotos: [JobPhoto] = []
         var createdPaths: [String] = []
         do {
@@ -217,6 +219,7 @@ struct AddPhotoView: View {
             for data in dataItems {
                 let path = try await PhotoFileStore().importImageData(data, jobID: job.id)
                 createdPaths.append(path)
+                guard canEditJob else { throw CancellationError() }
                 let photo = JobPhoto(
                     relativePath: path,
                     category: category,

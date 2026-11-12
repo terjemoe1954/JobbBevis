@@ -1,0 +1,12 @@
+JobbBevis 1.0.2 (11) – App Store-skjermbilder
+
+3 bilder per enhet: oppdrag, arbeidslogg, PDF.
+iPhone: 1206 × 2622. iPad Pro 13: 2064 × 2752. JPEG uten alpha.
+Norsk bokmål. Alle kunde- og firmadata er fiktive. Én aktiv jobb og to fullførte jobber; arbeidsloggen viser 8 t 30 min.
+Bildene er uendrede simulatorskjermbilder fra Release-versjonen som allerede var bygget fra build 11-koden. Appkoden og App Store-builden er ikke endret. PDF-bildet på iPad viser den vanlige rullbare forhåndsvisningen.
+
+Visuelt kontrollert: alle seks bilder; iPhone PDF viser hele siden, iPad PDF viser øvre del i appens vanlige modalvindu.
+Apple-status ved kontroll: Waiting for Review. Skjermbildefeltet er låst (Droppsone disabled, ingen Upload). Ingen ny opplasting og ingen kansellering av review utført.
+
+Åpne Oversikt.html for å se serien. Foreslått rekkefølge: 01, 02, 03. Gamle Pluss-bilder kan beholdes sist.
+Originale simulatortestdata er kopiert til SimulatorData-*-before-screenshots-2026-11-12 under verification før import av eksempeldata via appens vanlige backupflyt.

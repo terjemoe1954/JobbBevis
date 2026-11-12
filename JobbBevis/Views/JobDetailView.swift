@@ -2,6 +2,12 @@ import SwiftData
 import SwiftUI
 
 struct JobDetailView: View {
+    @Environment(AccessStore.self) private var access
+    @Query private var allJobs: [JobRecord]
+    @State private var showsPlus = false
+    @State private var confirmsCompletion = false
+
+    private var canEdit: Bool { access.policy.canEdit(job, in: allJobs) }
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Query private var invoices: [InvoiceRecord]
@@ -14,6 +20,14 @@ struct JobDetailView: View {
 
     var body: some View {
         List {
+            if !canEdit {
+                Section {
+                    Text("This job is read-only. All entries, photos and PDF reports remain available.")
+                    if job.status == .completed || job.isArchived {
+                        Button("Reopen job", action: reopenJob)
+                    } else { Button("See Free and Plus") { showsPlus = true } }
+                }
+            }
             if job.isExercise {
                 Section { Label("EXERCISE - DO NOT PAY", systemImage: "graduationcap").foregroundStyle(.orange) }
             }
@@ -42,6 +56,7 @@ struct JobDetailView: View {
                 }
             }
         }
+        .environment(\.canEditJob, canEdit)
         .listStyle(.insetGrouped)
         .appListAppearance()
         .navigationTitle(job.jobNumber)
@@ -51,7 +66,10 @@ struct JobDetailView: View {
                     Button("Restore job", systemImage: "arrow.uturn.backward", action: restoreJob)
                 } else {
                     Button("Edit", systemImage: "pencil") {
-                        isEditing = true
+                        if canEdit { isEditing = true } else { showsPlus = true }
+                    }
+                    if job.status != .completed {
+                        Button("Complete job", systemImage: "checkmark.circle") { confirmsCompletion = true }
                     }
                     if hasInvoice {
                         Button("Archive job", systemImage: "archivebox") {
@@ -64,6 +82,13 @@ struct JobDetailView: View {
                     }
                 }
             }
+        }
+        .sheet(isPresented: $showsPlus) { PlusSheet() }
+        .confirmationDialog("Mark job as completed?", isPresented: $confirmsCompletion, titleVisibility: .visible) {
+            Button("Complete job", action: completeJob)
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("All entries and photos are kept. Completing the job frees the active job slot in Free.")
         }
         .sheet(isPresented: $isEditing) {
             JobFormView(job: job)
@@ -152,14 +177,28 @@ struct JobDetailView: View {
     }
 
     private func restoreJob() {
+        guard access.policy.canReopen(job, in: allJobs) else { showsPlus = true; return }
         job.archivedAt = nil
         job.updatedAt = .now
+        saveArchiveChange()
+    }
+
+    private func reopenJob() {
+        guard access.policy.canReopen(job, in: allJobs) else { showsPlus = true; return }
+        job.archivedAt = nil
+        job.status = .inProgress
+        saveArchiveChange()
+    }
+
+    private func completeJob() {
+        job.status = .completed
         saveArchiveChange()
     }
 
     private func saveArchiveChange() {
         do {
             try modelContext.save()
+            if !access.hasPlus && !job.isArchived && job.status != .completed { access.selectedJobID = job.id }
         } catch {
             modelContext.rollback()
             errorMessage = String(localized: "The job archive status could not be saved. Try again.")
@@ -236,7 +275,7 @@ private struct JobDocumentationSection: View {
     var body: some View {
         Section("Documentation") {
             NavigationLink {
-                JobPhotosView(job: job)
+                JobPhotosView(job: job).jobEditingAccess(for: job)
             } label: {
                 DocumentationLinkLabel(
                     title: "Photos",
@@ -245,7 +284,7 @@ private struct JobDocumentationSection: View {
                 )
             }
             NavigationLink {
-                WorkEntriesView(job: job)
+                WorkEntriesView(job: job).jobEditingAccess(for: job)
             } label: {
                 DocumentationLinkLabel(
                     title: "Work log",
@@ -254,7 +293,7 @@ private struct JobDocumentationSection: View {
                 )
             }
             NavigationLink {
-                MaterialEntriesView(job: job)
+                MaterialEntriesView(job: job).jobEditingAccess(for: job)
             } label: {
                 DocumentationLinkLabel(
                     title: "Materials",
@@ -263,7 +302,7 @@ private struct JobDocumentationSection: View {
                 )
             }
             NavigationLink {
-                PurchaseListView(job: job)
+                PurchaseListView(job: job).jobEditingAccess(for: job)
             } label: {
                 DocumentationLinkLabel(
                     title: "Purchase list",

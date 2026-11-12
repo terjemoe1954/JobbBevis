@@ -2,6 +2,8 @@ import SwiftData
 import SwiftUI
 
 struct MaterialEntryFormView: View {
+    @Environment(AccessStore.self) private var access
+    @Environment(\.canEditJob) private var canEditJob
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
@@ -55,7 +57,7 @@ struct MaterialEntryFormView: View {
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 Section("Material") {
-                    if entry == nil, !products.isEmpty {
+                    if access.hasPlus, entry == nil, !products.isEmpty {
                         Menu("Copy from product catalog", systemImage: "shippingbox.fill") {
                             ForEach(products) { product in
                                 Button(productSelectionTitle(for: product)) {
@@ -103,13 +105,14 @@ struct MaterialEntryFormView: View {
                         .keyboardType(.decimalPad)
                 }
             }
+            .disabled(!canEditJob)
             .navigationTitle(entry == nil ? "New material" : "Edit material")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save", action: save)
+                    Button("Save", action: save).disabled(!canEditJob)
                 }
             }
             .onAppear {
@@ -136,6 +139,7 @@ struct MaterialEntryFormView: View {
     }
 
     private func save() {
+        guard canEditJob else { return }
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let quantity = EntryFormatting.parseDecimal(quantityText, locale: locale)
         let resolvedUnit = selectedUnit == "custom"

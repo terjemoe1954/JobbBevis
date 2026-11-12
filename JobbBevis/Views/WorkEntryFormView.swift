@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct WorkEntryFormView: View {
+    @Environment(\.canEditJob) private var canEditJob
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
@@ -62,13 +63,14 @@ struct WorkEntryFormView: View {
                         .keyboardType(.decimalPad)
                 }
             }
+            .disabled(!canEditJob)
             .navigationTitle(entry == nil ? "New work entry" : "Edit work entry")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save", action: save)
+                    Button("Save", action: save).disabled(!canEditJob)
                 }
             }
             .alert("Could not save changes", isPresented: errorBinding) {
@@ -87,6 +89,7 @@ struct WorkEntryFormView: View {
     }
 
     private func save() {
+        guard canEditJob else { return }
         let trimmedDetails = details.trimmingCharacters(in: .whitespacesAndNewlines)
         let durationMinutes = hours * 60 + minutes
         let kilometersText = drivingKilometersText.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct JobPhotosView: View {
+    @Environment(\.canEditJob) private var canEditJob
     @Environment(\.modelContext) private var modelContext
     let job: JobRecord
     @State private var isAddingPhoto = false
@@ -14,12 +15,12 @@ struct JobPhotosView: View {
     var body: some View {
         Group {
             if orderedPhotos.isEmpty {
-                PhotoEmptyState(addPhoto: { isAddingPhoto = true })
+                PhotoEmptyState(addPhoto: { if canEditJob { isAddingPhoto = true } }).disabled(!canEditJob)
             } else {
                 List {
                     ForEach(orderedPhotos) { photo in
                         NavigationLink {
-                            PhotoDetailView(photo: photo)
+                            PhotoDetailView(photo: photo).jobEditingAccess(for: job)
                         } label: {
                             PhotoRowView(photo: photo)
                         }
@@ -32,12 +33,12 @@ struct JobPhotosView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button("Add photos", systemImage: "plus") {
-                    isAddingPhoto = true
-                }
+                    if canEditJob { isAddingPhoto = true }
+                }.disabled(!canEditJob)
             }
             if !orderedPhotos.isEmpty {
                 ToolbarItem(placement: .secondaryAction) {
-                    EditButton()
+                    EditButton().disabled(!canEditJob)
                 }
             }
         }
@@ -59,6 +60,7 @@ struct JobPhotosView: View {
     }
 
     private func movePhotos(from offsets: IndexSet, to destination: Int) {
+        guard canEditJob else { return }
         var reordered = orderedPhotos
         reordered.move(fromOffsets: offsets, toOffset: destination)
         for (index, photo) in reordered.enumerated() {

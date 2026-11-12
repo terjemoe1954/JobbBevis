@@ -41,6 +41,8 @@ private enum JobFilter: String, CaseIterable, Identifiable {
 }
 
 struct JobsView: View {
+    @Environment(AccessStore.self) private var access
+    @State private var showsPlus = false
     @Query(sort: \JobRecord.plannedDate) private var jobs: [JobRecord]
     @State private var searchText = ""
     @State private var filter = JobFilter.active
@@ -60,7 +62,7 @@ struct JobsView: View {
         NavigationStack {
             Group {
                 if jobs.isEmpty {
-                    JobEmptyState(addJob: { isAddingJob = true })
+                    JobEmptyState(addJob: { requestNewJob() })
                 } else if filteredJobs.isEmpty {
                     FilteredJobsEmptyState(searchText: searchText)
                 } else {
@@ -79,6 +81,7 @@ struct JobsView: View {
                     .appListAppearance()
                 }
             }
+            .safeAreaInset(edge: .top) { FreeAccessStatusView(jobs: jobs) }
             .navigationTitle("Jobs")
             .searchable(text: $searchText, prompt: "Search jobs")
             .toolbar {
@@ -95,14 +98,19 @@ struct JobsView: View {
                 }
                 ToolbarItem {
                     Button("New job", systemImage: "plus") {
-                        isAddingJob = true
+                        requestNewJob()
                     }
                 }
             }
+            .sheet(isPresented: $showsPlus) { PlusSheet() }
             .sheet(isPresented: $isAddingJob) {
                 JobFormView()
             }
         }
+    }
+    private func requestNewJob() {
+        if access.policy.canCreateJob(in: jobs) { isAddingJob = true }
+        else { showsPlus = true }
     }
 }
 

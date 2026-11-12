@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct PurchaseListView: View {
+    @Environment(\.canEditJob) private var canEditJob
     @Environment(\.locale) private var locale
     @Environment(\.modelContext) private var modelContext
     let job: JobRecord
@@ -35,15 +36,15 @@ struct PurchaseListView: View {
                     Text("Add items you plan to buy for this job.")
                 } actions: {
                     Button("Add purchase item", systemImage: "plus") {
-                        isAddingItem = true
-                    }
+                        if canEditJob { isAddingItem = true }
+                    }.disabled(!canEditJob)
                 }
             } else {
                 Section {
                     ForEach(orderedItems) { item in
                         HStack(spacing: 12) {
                             Button {
-                                usageItem = item
+                                if canEditJob { usageItem = item }
                             } label: {
                                 Image(systemName: item.isTransferredToMaterials ? "checkmark.circle.fill" : item.usedQuantity > 0 ? "circle.lefthalf.filled" : "circle")
                                     .font(.title2)
@@ -51,6 +52,7 @@ struct PurchaseListView: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Register used quantity")
+                            .disabled(!canEditJob)
 
                             Button {
                                 selectedItem = item
@@ -61,8 +63,8 @@ struct PurchaseListView: View {
                         }
                         .swipeActions {
                             Button("Delete", systemImage: "trash", role: .destructive) {
-                                itemPendingDeletion = item
-                            }
+                                if canEditJob { itemPendingDeletion = item }
+                            }.disabled(!canEditJob)
                         }
                     }
                 } footer: {
@@ -81,8 +83,8 @@ struct PurchaseListView: View {
         .navigationTitle("Purchase list")
         .toolbar {
             Button("Add purchase item", systemImage: "plus") {
-                isAddingItem = true
-            }
+                if canEditJob { isAddingItem = true }
+            }.disabled(!canEditJob)
         }
         .sheet(isPresented: $isAddingItem) {
             PurchaseItemFormView(job: job)
@@ -125,6 +127,7 @@ struct PurchaseListView: View {
     }
 
     private func deletePendingItem() {
+        guard canEditJob else { return }
         guard let itemPendingDeletion else { return }
         modelContext.delete(itemPendingDeletion)
         job.updatedAt = .now

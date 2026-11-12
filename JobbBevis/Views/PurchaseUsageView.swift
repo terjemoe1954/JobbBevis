@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct PurchaseUsageView: View {
+    @Environment(\.canEditJob) private var canEditJob
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
@@ -73,6 +74,7 @@ struct PurchaseUsageView: View {
                 if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
             }
             .disabled(saving)
+            .disabled(!canEditJob)
             .navigationTitle("Register used quantity")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -80,7 +82,7 @@ struct PurchaseUsageView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Register usage", action: register)
-                        .disabled(saving || quantity.map { $0.isNaN || $0 <= 0 } != false)
+                        .disabled(!canEditJob || saving || quantity.map { $0.isNaN || $0 <= 0 } != false)
                 }
             }
             .onAppear {
@@ -92,6 +94,7 @@ struct PurchaseUsageView: View {
     }
 
     private func register() {
+        guard canEditJob else { return }
         guard !saving, let quantity else { return }
         saving = true
         defer { saving = false }

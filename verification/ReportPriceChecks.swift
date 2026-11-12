@@ -17,7 +17,7 @@ import PDFKit
    MaterialEntry(name: "Uten pris",quantity: 1,unit: "pcs",job: job)]
   var paths:[String] = []
   defer { for path in paths { try? PhotoFileStore().remove(relativePath: path) } }
-  for (index,size) in [CGSize(width: 360,height: 640),CGSize(width: 640,height: 360)].enumerated() {
+  for (index,size) in [CGSize(width: 360,height: 640), CGSize(width: 640,height: 360), CGSize(width: 500,height: 500), CGSize(width: 800,height: 300), CGSize(width: 300,height: 800), CGSize(width: 640,height: 360)].enumerated() {
    let renderer = UIGraphicsImageRenderer(size: size)
    let image = renderer.image { ctx in
     (index == 0 ? UIColor.systemBlue : UIColor.systemGreen).setFill();ctx.fill(CGRect(origin: .zero,size: size))
@@ -25,7 +25,10 @@ import PDFKit
    }
    let path = try await PhotoFileStore().importImageData(image.jpegData(compressionQuality: 0.8)!,jobID: job.id)
    paths.append(path)
-   job.photos.append(JobPhoto(relativePath: path,category: index == 0 ? .before : .after,caption: "Fiktivt øvelsesbilde",sortOrder: index,job: job))
+   let caption = index == 4
+    ? "LANG-BILDETEKST-START " + String(repeating: "Hele bildeteksten skal bevares ved sideskift. Æ, ø og å. ", count: 150) + " LANG-BILDETEKST-SLUTT"
+    : "BILDE-\(index + 1): Fiktivt øvelsesbilde med bildetekst som brytes over flere linjer i to kolonner."
+   job.photos.append(JobPhoto(relativePath: path,category: index == 0 ? .before : .after,caption: caption,sortOrder: index,job: job))
   }
   let locale=Locale(identifier: "nb_NO")
   let folder=URL(fileURLWithPath: "/private/tmp/JobbBevis-report-verification",isDirectory: true)
@@ -38,6 +41,9 @@ import PDFKit
    defer { try? FileManager.default.removeItem(at: url) }
    let document=PDFDocument(url: url)!;let text=document.string!
    assert(document.pageCount >= 3)
+   assert(text.contains("LANG-BILDETEKST-START") && text.contains("LANG-BILDETEKST-SLUTT"))
+   for number in [1, 2, 3, 4, 6] { assert(text.contains("BILDE-\(number):")) }
+   for page in 1...document.pageCount { assert(text.contains("Side \(page)")) }
    assert(text.contains("OV-V06") && text.contains("OV-V08"))
    assert(text.contains("pakke") && !text.contains("pkg"))
    if name == "uten-priser" {

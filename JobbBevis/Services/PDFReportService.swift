@@ -323,37 +323,92 @@ struct PDFReportService {
             }
 
             if options.includesPhotos, !photoData.isEmpty {
-                if let firstData = photoData.first?.1, let firstImage = UIImage(data: firstData) {
-                    let maxSize = CGSize(width: pageRect.width - margin * 2, height: 310)
-                    let firstSize = aspectFitSize(image: firstImage.size, inside: maxSize)
-                    ensureSpace(firstSize.height + 100)
-                } else {
-                    ensureSpace(115)
+                let gap: CGFloat = 16
+                let columnWidth = (pageRect.width - margin * 2 - gap) / 2
+                let categoryFont = UIFont.boldSystemFont(ofSize: 12)
+                let captionFont = UIFont.systemFont(ofSize: 10)
+                let dateFont = UIFont.systemFont(ofSize: 9)
+                let usableHeight = pageRect.height - margin * 2 - footerHeight - (job.isExercise ? 30 : 0)
+
+                func registeredText(_ photo: JobPhoto) -> String {
+                    localized("Registered") + ": " + photo.registeredAt.formatted(.dateTime.day().month().year().locale(locale))
                 }
+
+                func blockHeight(_ photo: JobPhoto, image: UIImage?, width: CGFloat) -> CGFloat {
+                    let imageHeight = image.map {
+                        aspectFitSize(image: $0.size, inside: CGSize(width: width, height: 260)).height
+                    } ?? textHeight(localized("Image unavailable"), width: width, font: captionFont)
+                    let captionHeight = photo.caption.isEmpty ? 0 : textHeight(photo.caption, width: width, font: captionFont) + 4
+                    return textHeight(localizedCategory(photo.category), width: width, font: categoryFont) + 5
+                        + imageHeight + 7 + captionHeight
+                        + textHeight(registeredText(photo), width: width, font: dateFont) + 18
+                }
+
+                let photos = photoData.map { (photo: $0.0, image: $0.1.flatMap { UIImage(data: $0) }) }
+                let firstHeight = photos.prefix(2).map {
+                    blockHeight($0.photo, image: $0.image, width: columnWidth)
+                }.max() ?? 0
+                ensureSpace(min(firstHeight, 400) + 40)
                 addSectionTitle(localized("Photos"))
-                for (photo, data) in photoData {
-                    if let data, let image = UIImage(data: data) {
-                        let maxSize = CGSize(width: pageRect.width - margin * 2, height: 310)
-                        let size = aspectFitSize(image: image.size, inside: maxSize)
+                var index = 0
+                while index < photos.count {
+                    let row = Array(photos[index..<min(index + 2, photos.count)])
+                    let rowHeight = row.map {
+                        blockHeight($0.photo, image: $0.image, width: columnWidth)
+                    }.max() ?? 0
+
+                    // Exceptionally long captions use the normal paginated text flow.
+                    // No fixed-height caption box may discard part of the text.
+                    if rowHeight > usableHeight {
+                        let item = photos[index]
+                        let size = item.image.map {
+                            aspectFitSize(image: $0.size, inside: CGSize(width: pageRect.width - margin * 2, height: 310))
+                        } ?? .zero
                         ensureSpace(size.height + 65)
-                        addText(localizedCategory(photo.category), font: .boldSystemFont(ofSize: 12), spacingAfter: 5)
-                        image.draw(in: CGRect(x: margin, y: y, width: size.width, height: size.height))
-                        y += size.height + 7
-                    } else {
-                        ensureSpace(80)
-                        addText(localizedCategory(photo.category), font: .boldSystemFont(ofSize: 12), spacingAfter: 5)
-                        addText(localized("Image unavailable"), font: .italicSystemFont(ofSize: 10), color: .darkGray)
+                        addText(localizedCategory(item.photo.category), font: categoryFont, spacingAfter: 5)
+                        if let image = item.image {
+                            image.draw(in: CGRect(x: margin, y: y, width: size.width, height: size.height))
+                            y += size.height + 7
+                        } else {
+                            addText(localized("Image unavailable"), font: .italicSystemFont(ofSize: 10), color: .darkGray)
+                        }
+                        addText(item.photo.caption, font: captionFont, spacingAfter: 4)
+                        addText(registeredText(item.photo), font: dateFont, color: .darkGray, spacingAfter: 8)
+                        addDivider()
+                        index += 1
+                        continue
                     }
-                    if !photo.caption.isEmpty {
-                        addText(photo.caption, font: .systemFont(ofSize: 10), spacingAfter: 4)
+
+                    ensureSpace(rowHeight)
+                    let rowTop = y
+                    for (column, item) in row.enumerated() {
+                        let x = margin + CGFloat(column) * (columnWidth + gap)
+                        var cardY = rowTop
+                        func cardText(_ text: String, font: UIFont, color: UIColor = .black, spacing: CGFloat) {
+                            guard !text.isEmpty else { return }
+                            let height = textHeight(text, width: columnWidth, font: font)
+                            draw(text, in: CGRect(x: x, y: cardY, width: columnWidth, height: height), font: font, color: color)
+                            cardY += height + spacing
+                        }
+                        cardText(localizedCategory(item.photo.category), font: categoryFont, spacing: 5)
+                        if let image = item.image {
+                            let size = aspectFitSize(image: image.size, inside: CGSize(width: columnWidth, height: 260))
+                            image.draw(in: CGRect(x: x + (columnWidth - size.width) / 2, y: cardY, width: size.width, height: size.height))
+                            cardY += size.height + 7
+                        } else {
+                            cardText(localized("Image unavailable"), font: captionFont, color: .darkGray, spacing: 7)
+                        }
+                        cardText(item.photo.caption, font: captionFont, spacing: 4)
+                        cardText(registeredText(item.photo), font: dateFont, color: .darkGray, spacing: 8)
+                        UIColor.lightGray.setStroke()
+                        let line = UIBezierPath()
+                        line.move(to: CGPoint(x: x, y: rowTop + rowHeight - 7))
+                        line.addLine(to: CGPoint(x: x + columnWidth, y: rowTop + rowHeight - 7))
+                        line.lineWidth = 0.5
+                        line.stroke()
                     }
-                    addText(
-                        localized("Registered") + ": " + photo.registeredAt.formatted(.dateTime.day().month().year().locale(locale)),
-                        font: .systemFont(ofSize: 9),
-                        color: .darkGray,
-                        spacingAfter: 8
-                    )
-                    addDivider()
+                    y = rowTop + rowHeight
+                    index += row.count
                 }
             }
 

@@ -1,0 +1,36 @@
+{
+  "identifier": "4BBA12C0",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "299.00",
+      "familyShareable": false,
+      "internalID": "7FBE08A1",
+      "localizations": [
+        {
+          "description": "Unlimited jobs, invoicing, accounting exports and reusable products. One-time purchase.",
+          "displayName": "JobbBevis Plus",
+          "locale": "en_US"
+        },
+        {
+          "description": "Ubegrensede oppdrag, fakturering, regnskapseksport og vareregister. Engangskjøp.",
+          "displayName": "JobbBevis Pluss",
+          "locale": "nb_NO"
+        }
+      ],
+      "productID": "com.terjemoe.JobbBevis.plus",
+      "referenceName": "JobbBevis Plus One-Time",
+      "type": "NonConsumable"
+    }
+  ],
+  "settings": {
+    "_locale": "nb_NO",
+    "_storefront": "NOR",
+    "_failTransactionsEnabled": false
+  },
+  "subscriptionGroups": [],
+  "version": {
+    "major": 2,
+    "minor": 0
+  }
+}

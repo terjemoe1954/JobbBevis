@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct PhotoDetailView: View {
+    @Environment(\.canEditJob) private var canEditJob
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     let photo: JobPhoto
@@ -28,11 +29,11 @@ struct PhotoDetailView: View {
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button("Edit", systemImage: "pencil") {
-                    isEditing = true
-                }
+                    if canEditJob { isEditing = true }
+                }.disabled(!canEditJob)
                 Button("Delete photo", systemImage: "trash", role: .destructive) {
-                    showDeleteConfirmation = true
-                }
+                    if canEditJob { showDeleteConfirmation = true }
+                }.disabled(!canEditJob)
             }
         }
         .sheet(isPresented: $isEditing) {
@@ -63,6 +64,7 @@ struct PhotoDetailView: View {
     }
 
     private func deletePhoto() {
+        guard canEditJob else { return }
         do {
             let stagedRemoval = try PhotoFileStore().stageRemoval(relativePath: photo.relativePath)
             let job = photo.job
@@ -109,6 +111,7 @@ private struct PhotoMetadataView: View {
 }
 
 private struct PhotoEditView: View {
+    @Environment(\.canEditJob) private var canEditJob
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     let photo: JobPhoto
@@ -133,13 +136,14 @@ private struct PhotoEditView: View {
                 TextField("Caption", text: $caption, axis: .vertical)
                     .lineLimit(2...5)
             }
+            .disabled(!canEditJob)
             .navigationTitle("Edit photo")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save", action: save)
+                    Button("Save", action: save).disabled(!canEditJob)
                 }
             }
             .alert("Could not save changes", isPresented: errorBinding) {
@@ -158,6 +162,7 @@ private struct PhotoEditView: View {
     }
 
     private func save() {
+        guard canEditJob else { return }
         photo.category = category
         photo.caption = caption.trimmingCharacters(in: .whitespacesAndNewlines)
         photo.job.updatedAt = .now

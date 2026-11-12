@@ -17,6 +17,7 @@ struct JobbBevisApp: App {
             case .success(let container):
                 AppRootView()
                     .modelContainer(container)
+                    .environment(AccessStore.shared)
             case .failure(let error):
                 StorageFailureView(error: error)
             }

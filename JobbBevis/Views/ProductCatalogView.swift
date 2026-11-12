@@ -2,6 +2,8 @@ import SwiftData
 import SwiftUI
 
 struct ProductCatalogView: View {
+    @Environment(AccessStore.self) private var access
+    @State private var showsPlus = false
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
     @Query(sort: [SortDescriptor(\ProductCatalogItem.supplier), SortDescriptor(\ProductCatalogItem.name)])
@@ -19,7 +21,7 @@ struct ProductCatalogView: View {
                 } description: {
                     Text("Add reusable products with supplier, unit, and price excluding VAT.")
                 } actions: {
-                    Button("Add product", systemImage: "plus") { isAdding = true }
+                    Button("Add product", systemImage: "plus") { if access.hasPlus { isAdding = true } else { showsPlus = true } }
                 }
             } else {
                 List(products) { product in
@@ -35,7 +37,7 @@ struct ProductCatalogView: View {
                     .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
                     .swipeActions {
                         Button("Delete", systemImage: "trash", role: .destructive) {
-                            productToDelete = product
+                            if access.hasPlus { productToDelete = product } else { showsPlus = true }
                         }
                     }
                 }
@@ -46,8 +48,9 @@ struct ProductCatalogView: View {
         .background(AppBackground())
         .navigationTitle("Product catalog")
         .toolbar {
-            Button("Add product", systemImage: "plus") { isAdding = true }
+            Button("Add product", systemImage: "plus") { if access.hasPlus { isAdding = true } else { showsPlus = true } }
         }
+        .sheet(isPresented: $showsPlus) { PlusSheet() }
         .sheet(isPresented: $isAdding) { ProductCatalogItemFormView() }
         .sheet(item: $productToEdit) { ProductCatalogItemFormView(product: $0) }
         .confirmationDialog("Delete product?", isPresented: deleteBinding, titleVisibility: .visible) {
@@ -72,6 +75,7 @@ struct ProductCatalogView: View {
     }
 
     private func deleteProduct() {
+        guard access.hasPlus else { return }
         guard let productToDelete else { return }
         modelContext.delete(productToDelete)
         do {
@@ -119,6 +123,7 @@ private struct ProductCatalogRow: View {
 }
 
 struct ProductCatalogItemFormView: View {
+    @Environment(AccessStore.self) private var access
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
@@ -177,6 +182,7 @@ struct ProductCatalogItemFormView: View {
                         .keyboardType(.decimalPad)
                 }
             }
+            .disabled(!access.hasPlus)
             .navigationTitle(product == nil ? "New product" : "Edit product")
             .task {
                 guard product == nil, itemNumber.isEmpty else { return }
@@ -184,7 +190,7 @@ struct ProductCatalogItemFormView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Save", action: save) }
+                ToolbarItem(placement: .confirmationAction) { Button("Save", action: save).disabled(!access.hasPlus) }
             }
             .onAppear {
                 if let product {
@@ -218,6 +224,7 @@ struct ProductCatalogItemFormView: View {
     }
 
     private func save() {
+        guard access.hasPlus else { return }
         let trimmedItemNumber = itemNumber.trimmingCharacters(in: .whitespacesAndNewlines)
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let quantity = EntryFormatting.parseDecimal(quantityText, locale: locale)

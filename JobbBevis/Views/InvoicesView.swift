@@ -2,6 +2,8 @@ import SwiftData
 import SwiftUI
 
 struct InvoicesView: View {
+    @Environment(AccessStore.self) private var access
+    @State private var showsPlus = false
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
     @Query(sort: \InvoiceRecord.issuedAt, order: .reverse) private var invoices: [InvoiceRecord]
@@ -14,6 +16,12 @@ struct InvoicesView: View {
     var body: some View {
         NavigationStack {
             List {
+                if !access.hasPlus {
+                    Section {
+                        Text("Existing invoices and credit notes remain available. Creating new invoices and credit notes requires Plus.")
+                        Button("See Free and Plus") { showsPlus = true }
+                    }
+                }
                 if !invoiceDrafts.isEmpty {
                     Section("Invoice drafts") {
                         ForEach(invoiceDrafts) { job in
@@ -31,7 +39,7 @@ struct InvoicesView: View {
                     }
                 }
 
-                if !jobsWithoutInvoiceOrDraft.isEmpty {
+                if access.hasPlus && !jobsWithoutInvoiceOrDraft.isEmpty {
                     Section("Create invoice draft") {
                         ForEach(jobsWithoutInvoiceOrDraft) { job in
                             NavigationLink {
@@ -73,7 +81,7 @@ struct InvoicesView: View {
 
                                 if creditNote(for: invoice) == nil {
                                     Button("Create credit note", systemImage: "arrow.uturn.backward.circle") {
-                                        invoiceToCredit = invoice
+                                        if access.hasPlus { invoiceToCredit = invoice } else { showsPlus = true }
                                     }
                                     .labelStyle(.iconOnly)
                                 } else {
@@ -106,6 +114,7 @@ struct InvoicesView: View {
                 }
             }
             .navigationTitle("Invoices")
+            .sheet(isPresented: $showsPlus) { PlusSheet() }
             .sheet(item: $preview) { preview in
                 PDFPreviewView(pdfURL: preview.url, title: preview.title)
             }
@@ -175,6 +184,7 @@ struct InvoicesView: View {
     }
 
     private func issueCreditNote() {
+        guard access.hasPlus else { showsPlus = true; return }
         guard let invoice = invoiceToCredit else { return }
         do {
             let creditNote = try SalesDocumentService.issueCreditNote(for: invoice, in: modelContext)

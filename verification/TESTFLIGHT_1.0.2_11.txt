@@ -1,0 +1,38 @@
+JOBBBEVIS 1.0.2 (11) – GRATIS OG PLUSS MED ENGANGSKJØP
+
+Gratis: ett aktivt redigerbart oppdrag, PDF og sikkerhetskopi inkludert.
+Pluss: flere aktive oppdrag, fakturering, regnskapseksport, samlerapporter
+og gjenbrukbar produktkatalog. Kjøp og gjenoppretting via Apple StoreKit.
+Eksisterende data slettes ikke ved endret tilgang.
+
+Test på fysiske enheter i TestFlight/Sandbox:
+- Åpne Pluss fra Innstillinger eller Pluss-knappen på oppdragslisten.
+- Kontroller at Apple viser riktig pris og at kjøpet låser opp Pluss.
+- Gjenopprett på samme Apple-konto, også på den andre enheten.
+- Prøv avbrudd/ventende kjøp og oppstart uten nett.
+- Kontroller gamle oppdrag, PDF, bilder og backup etter oppdatering.
+- Release har ingen utviklingsvelger for gratis/Pluss.
+
+Validering:
+- Apples lokale StoreKit-test: kjøp, gjenoppretting, ny oppstart og refusjon bestått.
+- Alle funksjons- og originalskjema-migreringskontroller bestått.
+- Release-arkiv og eksport bestått. Distribusjonssignatur verifisert;
+  get-task-allow=false. Ingen lokal .storekit-konfigurasjon i IPA-en.
+- Release-appen åpnet på eksisterende iPhone 17; Pluss-siden viste
+  299,00 kr fra Apple og Gjenopprett kjøp. Ingen betaling gjennomført.
+
+App Store Connect: kjøp 6833772803, com.terjemoe.JobbBevis.plus,
+Non-Consumable. Norsk og engelsk tekst, tilgjengelighet og review-notat
+lagret. Review-skjermbilde lastet opp. Prisgrunnlag Norge, 299 NOK nå.
+Ordinær pris 399 NOK etter de første 30 dagene fra offentlig lansering.
+Lanseringsdato er ikke satt; ingen datofestet økning er planlagt ennå.
+
+Status: Opplastet 12. november 2026. Apples behandling fullført.
+Internal-gruppen har tilgang. Testbeskrivelsen er lagret.
+Sendt til ekstern betagodkjenning; External Beta viser Approved for build 11.
+Automatisk varsling aktivert. Eksisterende offentlig lenke beholdt:
+https://testflight.apple.com/join/PHWNtd5C
+Apple build-ID: 8c9d4b8c-2370-4ff8-82ef-8f13947fe226
+Opplastingslogg: /private/tmp/JobbBevis-testflight-11-upload.log
+Arkiv: /Users/terjemoe/Library/Developer/Xcode/Archives/2026-11-12/JobbBevis 1.0.2 (11).xcarchive
+IPA: verification/TestFlight-1.0.2-11/JobbBevis.ipa
